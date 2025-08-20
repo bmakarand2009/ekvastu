@@ -3,10 +3,12 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Add the Google Services plugin
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.wajooba.vvp_app"
+    namespace = "com.ekvastu"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
@@ -21,7 +23,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.wajooba.vvp_app"
+        applicationId = "com.ekvastu"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -41,4 +43,13 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Add dependencies for Firebase
+dependencies {
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:32.2.3"))
+    
+    // Add the dependency for Firebase Auth
+    implementation("com.google.firebase:firebase-auth-ktx")
 }

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "42694214659",
+    "project_id": "ekvastu-dd15e",
+    "storage_bucket": "ekvastu-dd15e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42694214659:android:184b1b16b85d5862b7ba36",
+        "android_client_info": {
+          "package_name": "com.ekvastu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "42694214659-g16pmbk3j76vn0urdegp8vcruk8pciq3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBD3XQEV63b_8mTvKIC0uaxlYmDPBlufRA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "42694214659-g16pmbk3j76vn0urdegp8vcruk8pciq3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-package com.wajooba.vvp_app
+package com.ekvastu
 
 import io.flutter.embedding.android.FlutterActivity
 
