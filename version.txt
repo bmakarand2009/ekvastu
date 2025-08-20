@@ -1,0 +1,4 @@
+VVP - Vastu Virtual Planner
+Version: 1.0.0
+Build: 1
+Release Date: 2025-08-12
