@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:vvp_app/screens/home_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -14,14 +15,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   bool _isLoading = false;
+  bool _fieldsNotEmpty = false;  // Track if fields are filled
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to update button state when text changes
+    _nameController.addListener(_updateFieldsState);
+    _emailController.addListener(_updateFieldsState);
+  }
+
+  void _updateFieldsState() {
+    final nameNotEmpty = _nameController.text.isNotEmpty;
+    final emailText = _emailController.text;
+    final emailNotEmpty = emailText.isNotEmpty;
+    
+    // Check if email is valid using regex pattern
+    final bool isEmailValid = emailNotEmpty && 
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(emailText);
+    
+    setState(() {
+      _fieldsNotEmpty = nameNotEmpty && isEmailValid;
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -107,12 +129,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        'assets/images/logo.png',
-                        height: 40,
+                        'assets/images/ekshaktilogo.png',
+                        height: 32, // Reduced height to avoid overflow
+                        width: 32, // Explicit width to constrain size
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        'EkShakti',
+                        'EkVastu',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w500,
@@ -211,52 +234,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                
-                // Phone number field
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Phone Number',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 24),
                 
                 // Register Button
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _registerWithEmail,
+                  onPressed: _isLoading || !_fieldsNotEmpty ? null : _registerWithEmail,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black87,
+                    backgroundColor: const Color(0xFF5D2C14), // Brown color as shown in screenshot
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -270,46 +255,43 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
                 ),
                 
-                const SizedBox(height: 16),
-                const Center(child: Text('OR')),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                const Center(
+                  child: Text(
+                    'OR',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 
                 // Google Sign In Button
                 OutlinedButton(
                   onPressed: _isLoading ? null : _signInWithGoogle,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    side: const BorderSide(color: Colors.grey),
-                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    side: BorderSide.none,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
+                      Image.asset(
+                        'assets/images/google_icon.png',
                         height: 24,
                         width: 24,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            "G",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 12),
                       const Text(
@@ -317,7 +299,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
                         ),
                       ),
                     ],
