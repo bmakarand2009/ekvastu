@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Identifier and Basic App Info -->
+    <key>CFBundleIdentifier</key>
+    <string>org.ekshakti.EkVastu</string>
+    <key>CFBundleName</key>
+    <string>EkVastu</string>
+    <key>CFBundleDisplayName</key>
+    <string>EkVastu</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    
+    <!-- UI Requirements -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict/>
+    </dict>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    
+    <!-- Camera Permissions -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs access to camera to take photos with compass overlay</string>
+    
+    <!-- Location Permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app needs location access to show your position on the map and for compass functionality</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app needs location access to show your position on the map</string>
+    
+    <!-- Photo Library Permissions -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app needs access to photo library to save photos</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>This app needs permission to save photos to your library</string>
+    
+    <!-- Google Sign In Configuration -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c</string>
+            </array>
+        </dict>
+    </array>
+    
+    <!-- Google Sign In Client ID -->
+    <key>GIDClientID</key>
+    <string>846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c.apps.googleusercontent.com</string>
+    
+    <!-- Google Maps API Key -->
+    <key>GMSApiKey</key>
+    <string>AIzaSyCiIbvc_BUCEiItFKPN9CUev3vmcCgmEZQ</string>
+    
+    <!-- Firebase Configuration -->
+    <key>FirebaseAppDelegateProxyEnabled</key>
+    <true/>
+</dict>
+</plist>
