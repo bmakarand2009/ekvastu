@@ -1,9 +1,7 @@
 import Foundation
-import FirebaseAuth
 import CoreLocation
-import FirebaseFirestore
 
-struct PropertyAddress: Codable {
+struct PropertyAddress: Codable, Identifiable {
     var location: String
     var completeAddress: String
     var pincode: String
@@ -11,8 +9,14 @@ struct PropertyAddress: Codable {
     var latitude: Double?
     var longitude: Double?
     
-    // Firebase document ID for this property
-    var documentId: String?
+    // Unique identifier for this property
+    var id: String?
+    
+    // For backward compatibility
+    var documentId: String? {
+        get { return id }
+        set { id = newValue }
+    }
     
     enum PropertyType: String, Codable, CaseIterable {
         case home = "Home"
@@ -21,102 +25,25 @@ struct PropertyAddress: Codable {
         case other = "Other"
     }
     
-    // Convert to dictionary for Firestore
-    func toDictionary() -> [String: Any] {
-        var dict: [String: Any] = [
-            "location": location,
-            "completeAddress": completeAddress,
-            "pincode": pincode,
-            "propertyType": propertyType.rawValue
-        ]
-        
-        if let latitude = latitude {
-            dict["latitude"] = latitude
-        }
-        
-        if let longitude = longitude {
-            dict["longitude"] = longitude
-        }
-        
-        return dict
+    // Save to local storage
+    func saveToLocalStorage(completion: @escaping (Bool, Error?) -> Void) {
+        LocalStorageManager.shared.savePropertyAddress(self, completion: completion)
     }
     
-    // Create from Firestore document
-    static func fromDictionary(_ data: [String: Any], documentId: String? = nil) -> PropertyAddress? {
-        guard 
-            let location = data["location"] as? String,
-            let completeAddress = data["completeAddress"] as? String,
-            let pincode = data["pincode"] as? String,
-            let propertyTypeString = data["propertyType"] as? String,
-            let propertyType = PropertyType(rawValue: propertyTypeString)
-        else {
-            return nil
-        }
-        
-        var propertyAddress = PropertyAddress(
-            location: location,
-            completeAddress: completeAddress,
-            pincode: pincode,
-            propertyType: propertyType
-        )
-        
-        propertyAddress.latitude = data["latitude"] as? Double
-        propertyAddress.longitude = data["longitude"] as? Double
-        propertyAddress.documentId = documentId
-        
-        return propertyAddress
+    // Fetch from local storage
+    static func fetchFromLocalStorage(completion: @escaping ([PropertyAddress]?, Error?) -> Void) {
+        let addresses = LocalStorageManager.shared.loadPropertyAddresses()
+        completion(addresses, nil)
     }
     
-    // Save to Firestore
+    // For backward compatibility - redirects to local storage
     func saveToFirestore(completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(false, NSError(domain: "PropertyAddress", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"]))
-            return
-        }
-        
-        let db = Firestore.firestore()
-        let propertyRef = db.collection("users").document(userId).collection("properties").document()
-        
-        propertyRef.setData(self.toDictionary()) { error in
-            if let error = error {
-                print("Error saving property address: \(error.localizedDescription)")
-                completion(false, error)
-            } else {
-                print("Property address saved successfully")
-                completion(true, nil)
-            }
-        }
+        saveToLocalStorage(completion: completion)
     }
     
-    // Fetch from Firestore
+    // For backward compatibility - redirects to local storage
     static func fetchFromFirestore(completion: @escaping ([PropertyAddress]?, Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(nil, NSError(domain: "PropertyAddress", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"]))
-            return
-        }
-        
-        let db = Firestore.firestore()
-        let propertiesRef = db.collection("users").document(userId).collection("properties")
-        
-        propertiesRef.getDocuments { snapshot, error in
-            if let error = error {
-                print("Error fetching property addresses: \(error.localizedDescription)")
-                completion(nil, error)
-                return
-            }
-            
-            guard let snapshot = snapshot else {
-                completion([], nil)
-                return
-            }
-            
-            let properties = snapshot.documents.compactMap { document -> PropertyAddress? in
-                guard let data = document.data() as [String: Any]? else { return nil }
-                return PropertyAddress.fromDictionary(data, documentId: document.documentID)
-            }
-            
-            completion(properties, nil)
-        }
+        fetchFromLocalStorage(completion: completion)
     }
     
     // Geocode address to get coordinates

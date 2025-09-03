@@ -10,7 +10,7 @@ extension AuthenticationManager {
     // Static properties to track user flow
     static var hasCompletedUserDetails = false
     static var hasCompletedPropertyAddress = false
-    static var isCheckingUserStatus = true
+    static var isCheckingUserStatus = false
     
     // Get user information for the app flow
     func getUserInfo() -> [String: Any]? {
@@ -48,22 +48,7 @@ extension AuthenticationManager {
         return !Self.hasCompletedUserDetails
     }
     
-    // Check user status after login
-    func checkUserStatus(completion: @escaping () -> Void) {
-        Self.isCheckingUserStatus = true
-        
-        // Always show onboarding for now - we're not using Firestore anymore
-        // and will implement CoreData storage later
-        self.isAuthenticated = false
-        Self.hasCompletedUserDetails = false
-        Self.hasCompletedPropertyAddress = false
-        Self.isCheckingUserStatus = false
-        
-        // Short delay to allow UI to update
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            completion()
-        }
-    }
+    // Legacy method removed to avoid duplicate declaration
     
     // Get the appropriate view to show after login
     func getPostLoginView() -> AnyView {

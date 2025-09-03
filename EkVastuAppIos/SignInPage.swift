@@ -1,7 +1,6 @@
 import SwiftUI
 import Firebase
 import GoogleSignIn
-import FirebaseAuth
 
 
 struct SignInPage: View {
@@ -23,7 +22,7 @@ struct SignInPage: View {
     @State private var passwordEdited = false
     
     // Authentication state
-    @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var authManager = AuthenticationManager.shared
     
     var body: some View {
         ZStack {
@@ -40,9 +39,7 @@ struct SignInPage: View {
                     // Logo and header
                     HStack {
                        Image("headerimage")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 300)
+                        .frame(width: 78)
                         .padding(.top, 30)
                         
                         
@@ -321,28 +318,16 @@ struct SignInPage: View {
         isLoading = true
         errorMessage = nil
         
-        Auth.auth().signIn(withEmail: email, password: password) { authResult, error in
-            
-            
-            if let error = error {
+        authManager.signInWithEmail(email: email, password: password) { success in
+            DispatchQueue.main.async {
                 self.isLoading = false
-                self.errorMessage = error.localizedDescription
-                return
-            }
-            
-            // User signed in successfully
-            if let user = authResult?.user {
-                self.authManager.user = user
-                self.authManager.isAuthenticated = true
                 
-                // Check user status to determine which screen to show
-                self.authManager.checkUserStatus {
-                    
-                    self.isLoading = false
+                if success {
+                    // Navigate to appropriate screen
                     self.showHomeView = true
+                } else {
+                    self.errorMessage = "Invalid email or password"
                 }
-            } else {
-                self.isLoading = false
             }
         }
     }
@@ -358,34 +343,36 @@ struct SignInPage: View {
         
         // Get the root view controller
         let rootViewController = UIApplication.getRootViewController()
+        if rootViewController == nil {
+            self.isLoading = false
+            self.errorMessage = "Cannot present sign-in screen"
+            return
+        }
         
-        // Start Google Sign-In flow
+        // Use Firebase Google Sign-In
         authManager.signInWithGoogle(presenting: rootViewController) { success in
-            if success {
-                // Save user name from Google account to a new UserDetails object
-                let userName = self.authManager.getUserDisplayName()
-                let initialUserDetails = UserDetails(
-                    name: userName,
-                    dateOfBirth: Date(),
-                    timeOfBirth: Date(),
-                    placeOfBirth: ""
-                )
-                
-                // Save initial user details to secure storage
-                KeychainManager.saveUserDetails(initialUserDetails)
-                
-                // Always navigate to UserDetailsForm after successful Google sign-in
-                // This ensures the user completes their profile with birth details
-                AuthenticationManager.hasCompletedUserDetails = false
-                
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                if success {
+                    // Create initial user details in local storage
+                    let initialUserDetails = UserDetails(
+                        name: self.authManager.getUserDisplayName(),
+                        dateOfBirth: Date(),
+                        timeOfBirth: Date(),
+                        placeOfBirth: ""
+                    )
+                    
+                    // Save to UserDefaults
+                    initialUserDetails.saveToLocalStorage { success, error in
+                        if !success {
+                            print("Failed to save initial user details: \(error?.localizedDescription ?? "Unknown error")")
+                        }
+                    }
+                    
                     self.isLoading = false
                     self.showHomeView = true
-                }
-            } else {
-                DispatchQueue.main.async {
+                } else {
                     self.isLoading = false
-                    self.errorMessage = "Google sign-in failed. Please try again."
+                    self.errorMessage = "Google Sign-In failed. Please try again."
                 }
             }
         }
@@ -398,6 +385,7 @@ struct ForgotPasswordView: View {
     @State private var message: String? = nil
     @State private var isLoading = false
     @Environment(\.presentationMode) var presentationMode
+    @ObservedObject private var authManager = AuthenticationManager.shared
     
     // Validation state
     @State private var emailError: String? = nil
@@ -417,9 +405,7 @@ struct ForgotPasswordView: View {
                 // Logo and brand
                HStack {
                        Image("headerimage")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 300)
+                       .frame(width: 78)
                         .padding(.top, 30)
                         
                     }
@@ -550,18 +536,20 @@ struct ForgotPasswordView: View {
         isLoading = true
         message = nil
         
-        // Send password reset email using Firebase
-        Auth.auth().sendPasswordReset(withEmail: email) { error in
-            self.isLoading = false
-            
-            if let error = error {
-                self.message = "Error: \(error.localizedDescription)"
-            } else {
-                self.message = "Password reset link sent to your email"
+        // Use Firebase password reset
+        authManager.resetPassword(email: email) { error in
+            DispatchQueue.main.async {
+                self.isLoading = false
                 
-                // Navigate back to sign in page after a short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    self.presentationMode.wrappedValue.dismiss()
+                if let error = error {
+                    self.message = "Error: \(error.localizedDescription)"
+                } else {
+                    self.message = "Password reset instructions sent to your email"
+                    
+                    // Navigate back to sign in page after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        self.presentationMode.wrappedValue.dismiss()
+                    }
                 }
             }
         }

@@ -5,7 +5,7 @@ struct SplashScreen: View {
     @State private var opacity = 0.5
     @State private var scale: CGFloat = 0.8
     @Environment(\.managedObjectContext) private var viewContext
-    @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var authManager = AuthenticationManager.shared
     
     var body: some View {
         Group {

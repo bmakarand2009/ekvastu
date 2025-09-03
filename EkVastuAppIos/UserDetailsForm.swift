@@ -61,9 +61,7 @@ struct UserDetailsForm: View {
                     // Logo and header
                     HStack {
                        Image("headerimage")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 400)
+                        .frame(width: 78)
                         .padding(.top, 30)
                         
                         
@@ -306,7 +304,7 @@ struct UserDetailsForm: View {
         
         // Create or update user details object
         // Preserve the name from Google sign-in if it exists
-        let userName = existingUserDetails?.name ?? AuthenticationManager.shared.getUserDisplayName()
+        let userName = existingUserDetails?.name ?? authManager.getUserDisplayName()
         
         let userDetails = UserDetails(
             name: userName,

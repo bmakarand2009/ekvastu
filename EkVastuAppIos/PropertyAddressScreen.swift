@@ -1,10 +1,11 @@
 import SwiftUI
-import Firebase
 import GoogleMaps
 import GooglePlaces
 import CoreLocation
 
 struct PropertyAddressScreen: View {
+    // Optional property to edit - if nil, we're adding a new address
+    var addressToEdit: PropertyAddress?
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var location = ""
     @State private var completeAddress = ""
@@ -18,9 +19,29 @@ struct PropertyAddressScreen: View {
     @State private var navigateToAddressList = false
     @State private var showChangeAddressSheet = false
     @State private var showPropertyEvaluation = false
+    @State private var isEditMode = false
     @State private var suggestedAddresses: [GMSAutocompletePrediction] = []
     @State private var showSuggestions = false
     @State private var placesClient = GMSPlacesClient.shared()
+    @Environment(\.presentationMode) var presentationMode
+    
+    init(addressToEdit: PropertyAddress? = nil) {
+        self.addressToEdit = addressToEdit
+        
+        // Initialize state variables if we're editing an existing address
+        if let address = addressToEdit {
+            _location = State(initialValue: address.location)
+            _completeAddress = State(initialValue: address.completeAddress)
+            _pincode = State(initialValue: address.pincode)
+            _propertyType = State(initialValue: address.propertyType)
+            _isEditMode = State(initialValue: true)
+            
+            if let latitude = address.latitude, let longitude = address.longitude {
+                _mapCenter = State(initialValue: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+                _mapMarker = State(initialValue: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+            }
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -34,8 +55,30 @@ struct PropertyAddressScreen: View {
             
             ScrollView {
                 VStack(spacing: 20) {
+                    
+                    // Logo and header with back button
+                    HStack {
+                        Button(action: {
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(hex: "#4A2511"))
+                        }
+                        .padding(.leading, 10)
+                        
+                        Spacer()
+                        
+                        Image("headerimage")
+                            .frame(width: 78)
+                            .padding(.top, 30)
+                        
+                        Spacer()
+                    }
+                    .padding(.top, 20)
+                    
                     // Title
-                    Text("Enter property's address")
+                    Text(isEditMode ? "Edit property's address" : "Enter property's address")
                         .font(.title3)
                         .fontWeight(.medium)
                         .padding(.top, 20)
@@ -48,18 +91,16 @@ struct PropertyAddressScreen: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        HStack {
+                        Button(action: {
+                            showChangeAddressSheet = true
+                        }) {
                             TextField("Sun City Apartments, Opposite Dmart...", text: $location)
                                 .padding(10)
                                 .background(Color.white)
                                 .cornerRadius(8)
-                            
-                            Button("Change address") {
-                                showChangeAddressSheet = true
-                            }
-                            .foregroundColor(.green)
-                            .font(.caption)
+                                .disabled(true)
                         }
+                        .buttonStyle(.plain)
                         
                         // Complete Address
                         Text("Complete Address")
@@ -166,29 +207,10 @@ struct PropertyAddressScreen: View {
                                 .cornerRadius(10)
                         }
                         
-                        // Map marker indicator
-                        if let _ = mapMarker {
-                            VStack(alignment: .leading) {
-                                Spacer()
-                                HStack {
-                                    Spacer()
-                                    VStack(alignment: .leading) {
-                                        Text("Selected Location")
-                                            .font(.caption)
-                                            .foregroundColor(.black)
-                                            .padding(8)
-                                            .background(Color.white)
-                                            .cornerRadius(4)
-                                            .shadow(radius: 2)
-                                    }
-                                    .offset(x: -20, y: -20)
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
+                        // Map marker with no text indicator
                     }
                     
-                    // Next button
+                    // Save/Update button
                     Button(action: savePropertyAddress) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 10)
@@ -199,7 +221,7 @@ struct PropertyAddressScreen: View {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
-                                Text("Next")
+                                Text(isEditMode ? "Update" : "Next")
                                     .font(.headline)
                                     .foregroundColor(.white)
                             }
@@ -353,30 +375,56 @@ struct PropertyAddressScreen: View {
             return
         }
         
-        isLoading = true
+        // Create or update the property address object
+        var propertyAddress: PropertyAddress
         
-        var propertyAddress = PropertyAddress(
-            location: location,
-            completeAddress: completeAddress,
-            pincode: pincode,
-            propertyType: propertyType
-        )
+        if isEditMode, let existingAddress = addressToEdit {
+            // Update existing address
+            propertyAddress = PropertyAddress(
+                location: location,
+                completeAddress: completeAddress,
+                pincode: pincode,
+                propertyType: propertyType
+            )
+            // Preserve the original ID
+            propertyAddress.id = existingAddress.id
+        } else {
+            // Create new address
+            propertyAddress = PropertyAddress(
+                location: location,
+                completeAddress: completeAddress,
+                pincode: pincode,
+                propertyType: propertyType
+            )
+        }
         
+        // Update coordinates
         if let coordinate = mapMarker {
             propertyAddress.latitude = coordinate.latitude
             propertyAddress.longitude = coordinate.longitude
         }
         
-        // Save to Firestore
-        propertyAddress.saveToFirestore { success, error in
-            isLoading = false
+        // Show loading indicator
+        isLoading = true
+        
+        // Save the address
+        DispatchQueue.global(qos: .userInitiated).async {
+            print("\(isEditMode ? "Updating" : "Saving") property address of type: \(propertyType.rawValue) to local storage")
             
-            if success {
-                // Navigate to address list screen
-                navigateToAddressList = true
-            } else {
-                alertMessage = error?.localizedDescription ?? "Failed to save property address"
-                showAlert = true
+            propertyAddress.saveToLocalStorage { success, error in
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    
+                    if success {
+                        print("Successfully \(self.isEditMode ? "updated" : "saved") property address to local storage")
+                        // Navigate back to the list screen
+                        self.navigateToAddressList = true
+                    } else if let error = error {
+                        print("Error \(self.isEditMode ? "updating" : "saving") property address to local storage: \(error.localizedDescription)")
+                        self.alertMessage = "Error \(self.isEditMode ? "updating" : "saving") address: \(error.localizedDescription)"
+                        self.showAlert = true
+                    }
+                }
             }
         }
     }

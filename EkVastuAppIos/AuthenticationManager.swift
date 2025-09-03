@@ -23,6 +23,32 @@ class AuthenticationManager: ObservableObject {
         }
     }
     
+    func signInWithEmail(email: String, password: String, completion: @escaping (Bool) -> Void) {
+        Auth.auth().signIn(withEmail: email, password: password) { authResult, error in
+            if let error = error {
+                self.authError = error
+                completion(false)
+                return
+            }
+            
+            // User signed in successfully
+            if let user = authResult?.user {
+                self.user = user
+                self.isAuthenticated = true
+                
+                // Print user details and token to console
+                self.printUserDetailsAndToken(user: user)
+                
+                // Check user status to determine which screen to show
+                self.checkUserStatus {
+                    completion(true)
+                }
+            } else {
+                completion(false)
+            }
+        }
+    }
+    
     func signInWithGoogle(presenting viewController: UIViewController, completion: @escaping (Bool) -> Void) {
         print("Starting Google Sign-In process...")
         
@@ -117,12 +143,39 @@ class AuthenticationManager: ObservableObject {
                 
                 print("Firebase authentication successful")
                 // User is signed in
-                self?.user = authResult?.user
-                self?.isAuthenticated = true
-                completion(true)
+                if let user = authResult?.user {
+                    self?.user = user
+                    self?.isAuthenticated = true
+                    
+                    // Print user details and token to console
+                    self?.printUserDetailsAndToken(user: user)
+                    
+                    completion(true)
+                } else {
+                    self?.isAuthenticated = true
+                    completion(true)
+                }
             }
         }
     }
+    
+    #if targetEnvironment(simulator)
+    func bypassAuthenticationForSimulator(completion: @escaping (Bool) -> Void) {
+        // Create mock user
+        self.mockUser = MockUser()
+        
+        // Set authenticated state without using keychain
+        self.isAuthenticated = true
+        print("Successfully bypassed authentication for simulator testing")
+        
+        if let mockUser = self.mockUser {
+            print("Mock user: \(mockUser.displayName)")
+        }
+        
+        // Continue with app flow
+        completion(true)
+    }
+    #endif
     
     func signOut() {
         do {
@@ -134,6 +187,70 @@ class AuthenticationManager: ObservableObject {
             print("Error signing out: \(error.localizedDescription)")
             self.authError = error
         }
+    }
+    
+    func checkUserStatus(completion: @escaping () -> Void) {
+        // Set flag to indicate we're checking user status
+        AuthenticationManager.isCheckingUserStatus = true
+        
+        // Check if user details exist in local storage
+        UserDetails.fetchFromLocalStorage { userDetails, error in
+            if let _ = userDetails {
+                AuthenticationManager.hasCompletedUserDetails = true
+                
+                // Check if property address exists
+                PropertyAddress.fetchFromLocalStorage { addresses, error in
+                    if let addresses = addresses, !addresses.isEmpty {
+                        AuthenticationManager.hasCompletedPropertyAddress = true
+                    } else {
+                        AuthenticationManager.hasCompletedPropertyAddress = false
+                    }
+                    
+                    // Reset flag when done checking
+                    AuthenticationManager.isCheckingUserStatus = false
+                    completion()
+                }
+            } else {
+                AuthenticationManager.hasCompletedUserDetails = false
+                AuthenticationManager.hasCompletedPropertyAddress = false
+                
+                // Reset flag when done checking
+                AuthenticationManager.isCheckingUserStatus = false
+                completion()
+            }
+        }
+    }
+    
+    func resetPassword(email: String, completion: @escaping (Error?) -> Void) {
+        Auth.auth().sendPasswordReset(withEmail: email, completion: completion)
+    }
+    
+    // Print user details and token to console
+    func printUserDetailsAndToken(user: User) {
+        print("\n==== FIREBASE AUTH SUCCESS ====")
+        print("User ID: \(user.uid)")
+        print("Email: \(user.email ?? "No email")")
+        print("Display Name: \(user.displayName ?? "No display name")")
+        print("Phone: \(user.phoneNumber ?? "No phone number")")
+        print("Email Verified: \(user.isEmailVerified)")
+        print("Creation Date: \(user.metadata.creationDate?.description ?? "Unknown")")
+        print("Last Sign In: \(user.metadata.lastSignInDate?.description ?? "Unknown")")
+        
+        // Get the ID token
+        user.getIDToken { token, error in
+            if let error = error {
+                print("Error getting token: \(error.localizedDescription)")
+                return
+            }
+            
+            if let token = token {
+                print("\n==== AUTH TOKEN ====")
+                print(token)
+                print("\n==== END TOKEN ====")
+            }
+        }
+        
+        print("==== END USER DETAILS ====\n")
     }
 }
 

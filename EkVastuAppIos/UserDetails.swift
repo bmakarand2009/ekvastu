@@ -1,100 +1,63 @@
 import Foundation
-import FirebaseAuth
-import FirebaseFirestore
 
-struct UserDetails: Codable {
+struct UserDetails: Codable, Identifiable {
+    var id: String = UUID().uuidString
     var name: String
     var dateOfBirth: Date
     var timeOfBirth: Date
     var placeOfBirth: String
     var hasCompletedDetails: Bool = true
     
-    // Firebase document ID for this user
-    var documentId: String?
-    
-    // Convert to dictionary for Firestore
+    // For backward compatibility with Firebase code
     func toDictionary() -> [String: Any] {
         return [
+            "id": id,
             "name": name,
-            "dateOfBirth": Timestamp(date: dateOfBirth),
-            "timeOfBirth": Timestamp(date: timeOfBirth),
+            "dateOfBirth": dateOfBirth,
+            "timeOfBirth": timeOfBirth,
             "placeOfBirth": placeOfBirth,
             "hasCompletedDetails": hasCompletedDetails
         ]
     }
     
-    // Create from Firestore document
-    static func fromDictionary(_ data: [String: Any], documentId: String? = nil) -> UserDetails? {
-        guard 
-            let name = data["name"] as? String,
-            let dateOfBirthTimestamp = data["dateOfBirth"] as? Timestamp,
-            let timeOfBirthTimestamp = data["timeOfBirth"] as? Timestamp,
-            let placeOfBirth = data["placeOfBirth"] as? String,
-            let hasCompletedDetails = data["hasCompletedDetails"] as? Bool
-        else {
-            return nil
+    // Save to local storage
+    func saveToLocalStorage(completion: @escaping (Bool, Error?) -> Void) {
+        do {
+            let data = try JSONEncoder().encode(self)
+            UserDefaults.standard.set(data, forKey: "userDetails")
+            print("User details saved successfully to local storage")
+            completion(true, nil)
+        } catch {
+            print("Error saving user details to local storage: \(error.localizedDescription)")
+            completion(false, error)
         }
-        
-        var userDetails = UserDetails(
-            name: name,
-            dateOfBirth: dateOfBirthTimestamp.dateValue(),
-            timeOfBirth: timeOfBirthTimestamp.dateValue(),
-            placeOfBirth: placeOfBirth,
-            hasCompletedDetails: hasCompletedDetails
-        )
-        
-        userDetails.documentId = documentId
-        return userDetails
     }
     
-    // Save to Firestore
+    // Fetch from local storage
+    static func fetchFromLocalStorage(completion: @escaping (UserDetails?, Error?) -> Void) {
+        guard let data = UserDefaults.standard.data(forKey: "userDetails") else {
+            completion(nil, NSError(domain: "UserDetails", code: 2, userInfo: [NSLocalizedDescriptionKey: "User details not found in local storage"]))
+            return
+        }
+        
+        do {
+            let userDetails = try JSONDecoder().decode(UserDetails.self, from: data)
+            completion(userDetails, nil)
+        } catch {
+            print("Error decoding user details from local storage: \(error.localizedDescription)")
+            completion(nil, error)
+        }
+    }
+    
+    // For backward compatibility with Firebase code
     func saveToFirestore(completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(false, NSError(domain: "UserDetails", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"]))
-            return
-        }
-        
-        let db = Firestore.firestore()
-        let userRef = db.collection("users").document(userId)
-        
-        userRef.setData(self.toDictionary()) { error in
-            if let error = error {
-                print("Error saving user details: \(error.localizedDescription)")
-                completion(false, error)
-            } else {
-                print("User details saved successfully")
-                completion(true, nil)
-            }
-        }
+        // Redirect to local storage implementation
+        saveToLocalStorage(completion: completion)
     }
     
-    // Fetch from Firestore
+    // For backward compatibility with Firebase code
     static func fetchFromFirestore(completion: @escaping (UserDetails?, Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(nil, NSError(domain: "UserDetails", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"]))
-            return
-        }
-        
-        let db = Firestore.firestore()
-        let userRef = db.collection("users").document(userId)
-        
-        userRef.getDocument { document, error in
-            if let error = error {
-                print("Error fetching user details: \(error.localizedDescription)")
-                completion(nil, error)
-                return
-            }
-            
-            guard let document = document, document.exists, let data = document.data() else {
-                completion(nil, NSError(domain: "UserDetails", code: 2, userInfo: [NSLocalizedDescriptionKey: "User details not found"]))
-                return
-            }
-            
-            if let userDetails = UserDetails.fromDictionary(data, documentId: document.documentID) {
-                completion(userDetails, nil)
-            } else {
-                completion(nil, NSError(domain: "UserDetails", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to parse user details"]))
-            }
-        }
+        // Redirect to local storage implementation
+        fetchFromLocalStorage(completion: completion)
     }
 }

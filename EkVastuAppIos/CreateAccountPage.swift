@@ -13,7 +13,7 @@ struct CreateAccountPage: View {
     @State private var navigateToOnboarding = false
     
     // Authentication state
-    @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var authManager = AuthenticationManager.shared
     @State private var isLoading = false
     @State private var showHomeView = false
     
@@ -38,9 +38,7 @@ struct CreateAccountPage: View {
             VStack(alignment: .center, spacing: 20) {
                 // Header image
                 Image("headerimage")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 300)
+                    .frame(width: 78)
                     .padding(.top, 30)
                 
                 // Welcome text
