@@ -221,9 +221,10 @@ struct SignInPage: View {
                         NavigationLink(destination: CreateAccountPage(showCreateAccount: $showCreateAccount)) {
                             Text("Sign up")
                                 .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color.white)
                                
-                        }
-                    } .foregroundColor(Color.white)
+                        }.buttonStyle(.plain)
+                    }
                     .padding(.vertical, 20)
                     
                     // Error message
@@ -236,13 +237,7 @@ struct SignInPage: View {
                 }
                 .padding(.bottom, 30)
             }
-            // Loading overlay
-            if isLoading {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
-            }
+            
             
             // Navigation to appropriate view based on user status
             Group {
@@ -366,17 +361,32 @@ struct SignInPage: View {
         
         // Start Google Sign-In flow
         authManager.signInWithGoogle(presenting: rootViewController) { success in
-            
-            
             if success {
-                // Check user status to determine which screen to show
-                self.authManager.checkUserStatus {
-                    
+                // Save user name from Google account to a new UserDetails object
+                let userName = self.authManager.getUserDisplayName()
+                let initialUserDetails = UserDetails(
+                    name: userName,
+                    dateOfBirth: Date(),
+                    timeOfBirth: Date(),
+                    placeOfBirth: ""
+                )
+                
+                // Save initial user details to secure storage
+                KeychainManager.saveUserDetails(initialUserDetails)
+                
+                // Always navigate to UserDetailsForm after successful Google sign-in
+                // This ensures the user completes their profile with birth details
+                AuthenticationManager.hasCompletedUserDetails = false
+                
+                DispatchQueue.main.async {
                     self.isLoading = false
                     self.showHomeView = true
                 }
             } else {
-                self.isLoading = false
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.errorMessage = "Google sign-in failed. Please try again."
+                }
             }
         }
     }

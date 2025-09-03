@@ -3,7 +3,7 @@ import GooglePlaces
 import CoreLocation
 
 // Address search view for the sheet using GooglePlaces
-struct AddressSearchView: View {
+struct GoogleAddressSearchView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var searchText = ""
     @State private var searchResults: [PlacePrediction] = []

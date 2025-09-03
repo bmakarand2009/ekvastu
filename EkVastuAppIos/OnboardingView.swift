@@ -135,6 +135,7 @@ struct OnboardingSlide: View {
                     .background(Color(hex: "#4A2511"))
                     .cornerRadius(10)
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 30)
             .padding(.bottom, 50)
         }

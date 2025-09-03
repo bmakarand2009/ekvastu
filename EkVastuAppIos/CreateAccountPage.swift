@@ -277,13 +277,7 @@ struct CreateAccountPage: View {
             NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
         }
         
-            // Loading overlay
-            if isLoading {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
-            }
+           
             
             // Navigation to appropriate view based on user status
             Group {
