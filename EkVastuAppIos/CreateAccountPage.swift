@@ -6,7 +6,6 @@ import FirebaseAuth
 struct CreateAccountPage: View {
     @State private var name: String = ""
     @State private var email: String = ""
-    @State private var password: String = ""
     @State private var agreedToTerms: Bool = false
     @Environment(\.presentationMode) var presentationMode
     @Binding var showCreateAccount: Bool
@@ -20,12 +19,10 @@ struct CreateAccountPage: View {
     // Validation state
     @State private var nameError: String? = nil
     @State private var emailError: String? = nil
-    @State private var passwordError: String? = nil
     
     // Track if fields have been edited
     @State private var nameEdited = false
     @State private var emailEdited = false
-    @State private var passwordEdited = false
     
     // Animation state
     @State private var signInPressed = false
@@ -109,32 +106,7 @@ struct CreateAccountPage: View {
                 }
                 .padding(.horizontal)
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Password")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    SecureField("", text: $password)
-                        .padding()
-                        .background(Color(UIColor.systemBackground))
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(passwordError != nil && passwordEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                        .onChange(of: password) { _ in
-                            passwordEdited = true
-                            validatePassword()
-                        }
-                    
-                    if let error = passwordError, passwordEdited {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .padding(.top, 4)
-                    }
-                }
-                .padding(.horizontal)
+                // Password field removed
                 
                     Text("Sign up")
                         .font(.headline)
@@ -224,20 +196,21 @@ struct CreateAccountPage: View {
                 .padding(.horizontal)
                 
                 // Already registered link with animation
-                (Text("Already Registered? ")
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundColor(.white)
-                    + Text("Sign in")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white))
-                    .padding(.vertical)
-                    .scaleEffect(signInPressed ? 1.2 : 1.0)
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                            signInPressed = true
-                            
-                            // Reset the animation after a delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                HStack {
+                    Text("Already Registered? ")
+                        .font(.system(size: 20, weight: .regular))
+                    
+                    Text("Sign in")
+                        .font(.system(size: 20, weight: .bold))
+                        .scaleEffect(signInPressed ? 1.2 : 1.0)
+                }
+                .padding(.vertical)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        signInPressed = true
+                        
+                        // Reset the animation after a delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                                     signInPressed = false
                                 }
@@ -305,8 +278,8 @@ struct CreateAccountPage: View {
     }
     
     private func formIsValid() -> Bool {
-        return nameError == nil && emailError == nil && passwordError == nil && 
-               !name.isEmpty && !email.isEmpty && !password.isEmpty && agreedToTerms
+        return nameError == nil && emailError == nil && 
+               !name.isEmpty && !email.isEmpty && agreedToTerms
     }
     
     private func validateName() {
@@ -327,15 +300,7 @@ struct CreateAccountPage: View {
         }
     }
     
-    private func validatePassword() {
-        if password.isEmpty {
-            passwordError = "Password is required"
-        } else if password.count < 6 {
-            passwordError = "Password must be at least 6 characters"
-        } else {
-            passwordError = nil
-        }
-    }
+    // Password validation removed
     
     private func isValidEmail(_ email: String) -> Bool {
         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
@@ -347,36 +312,41 @@ struct CreateAccountPage: View {
         // Trigger validation for all fields
         validateName()
         validateEmail()
-        validatePassword()
         
-        return nameError == nil && emailError == nil && passwordError == nil && agreedToTerms
+        return nameError == nil && emailError == nil && agreedToTerms
     }
     
     private func createAccount() {
         isLoading = true
-        // Create user with email and password
-        Auth.auth().createUser(withEmail: email, password: password) { authResult, error in
-            isLoading = false
-            if let error = error {
-                print("Error creating account: \(error.localizedDescription)")
-                return
-            }
-            
-            // User created successfully
-            if let user = authResult?.user {
-                // Update display name
-                let changeRequest = user.createProfileChangeRequest()
-                changeRequest.displayName = name
-                changeRequest.commitChanges { error in
-                    if let error = error {
-                        print("Error updating profile: \(error.localizedDescription)")
+        
+        // Since we're not using password authentication anymore,
+        // we'll use the Google Sign-In method directly
+        let rootViewController = UIApplication.getRootViewController()
+        
+        // Start Google Sign-In flow
+        authManager.signInWithGoogle(presenting: rootViewController) { success in
+            if success {
+                // If Google sign-in is successful, update the user's display name
+                if let user = Auth.auth().currentUser {
+                    // Update display name
+                    let changeRequest = user.createProfileChangeRequest()
+                    changeRequest.displayName = self.name
+                    changeRequest.commitChanges { error in
+                        if let error = error {
+                            print("Error updating profile: \(error.localizedDescription)")
+                        }
                     }
+                    
+                    // Check user status to determine which screen to show
+                    self.authManager.checkUserStatus {
+                        self.isLoading = false
+                        self.showHomeView = true
+                    }
+                } else {
+                    self.isLoading = false
                 }
-                
-                // Navigate to home view
-                authManager.user = user
-                authManager.isAuthenticated = true
-                showHomeView = true
+            } else {
+                self.isLoading = false
             }
         }
     }
@@ -401,10 +371,4 @@ struct CreateAccountPage: View {
         }
     }
 }
-
-
-struct CreateAccountPage_Previews: PreviewProvider {
-    static var previews: some View {
-        CreateAccountPage(showCreateAccount: .constant(true))
-    }
-}
+ 

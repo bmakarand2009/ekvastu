@@ -218,7 +218,7 @@ struct SignInPage: View {
                         NavigationLink(destination: CreateAccountPage(showCreateAccount: $showCreateAccount)) {
                             Text("Sign up")
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color.white)
+                               
                                
                         }.buttonStyle(.plain)
                     }
@@ -555,12 +555,4 @@ struct ForgotPasswordView: View {
         }
     }
 }
-
-struct SignInPage_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationView {
-            SignInPage()
-        }
-    }
-    
-}
+ 
