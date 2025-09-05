@@ -254,6 +254,12 @@ struct HomeAnalyzeView: View {
     // Room types available for selection
     private let roomTypes = ["Living room", "Bedroom", "Office Room", "Kitchen", "Hall", "Balcony", "Study Room", "Bath Room"]
     
+    // Computed property to determine if the Analyze Entrance button should be enabled
+    private var analyzeEntranceButtonEnabled: Bool {
+        // Enable button only when there are no photos or fewer than max photos
+        return photoManager.entrancePhotos.isEmpty
+    }
+    
     // Extract photo thumbnails section to reduce complexity
     private var photoThumbnailsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -378,9 +384,10 @@ struct HomeAnalyzeView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(10)
-                            .background(Color(hex: "#4A2511"))
+                            .background(analyzeEntranceButtonEnabled ? Color(hex: "#4A2511") : Color.gray)
                             .cornerRadius(8)
                     }
+                    .disabled(!analyzeEntranceButtonEnabled)
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal)
                     .padding(.top, 10)
