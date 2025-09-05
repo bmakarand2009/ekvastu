@@ -388,7 +388,7 @@ struct CreateAccountPage: View {
         
         // Start Google Sign-In flow
         authManager.signInWithGoogle(presenting: rootViewController) { success in
-            
+             print(authManager)
             if success {
                 // Check user status to determine which screen to show
                 self.authManager.checkUserStatus {

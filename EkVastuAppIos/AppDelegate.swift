@@ -52,6 +52,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 print("Failed to restore previous sign-in: \(error.localizedDescription)")
             } else if let user = user {
                 print("Successfully restored sign-in for user: \(user.profile?.email ?? "Unknown")")
+                
+                // Print the ID token
+                if let idToken = user.idToken?.tokenString {
+                    print("ID Token: \(idToken)")
+                } else {
+                    print("ID Token not available")
+                }
+                print("Access Token: \(user.accessToken.tokenString)")
+                
+                
             } else {
                 print("No previous sign-in found")
             }

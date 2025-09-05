@@ -1,9 +1,15 @@
 import SwiftUI
+import AVFoundation
 
 struct HomeAnalyzeView: View {
     @State private var selectedRoomType: String = "Select room type"
     @State private var isRoomTypeSelected: Bool = false
     @State private var isDropdownOpen = false
+    @State private var showCameraView = false
+    @State private var showPhotoPreview = false
+    @State private var selectedPreviewImage: UIImage? = nil
+    @State private var showingImagePopup = false
+    @StateObject private var photoManager = EntrancePhotoManager()
     
     // Room types available for selection
     private let roomTypes = ["Living room", "Bedroom", "Office Room", "Kitchen", "Hall", "Balcony", "Study Room", "Bath Room"]
@@ -45,7 +51,7 @@ struct HomeAnalyzeView: View {
                     
                     // Analyze Entrance button
                     Button(action: {
-                        // Action for analyzing entrance
+                        showCameraView = true
                     }) {
                         Text("Analyze Entrance")
                             .font(.headline)
@@ -58,6 +64,56 @@ struct HomeAnalyzeView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal)
                     .padding(.top, 10)
+                    .fullScreenCover(isPresented: $showCameraView) {
+                        CameraWithCompassView(capturedImages: $photoManager.entrancePhotos)
+                    }
+                    
+                    // Display captured photos
+                    if !photoManager.entrancePhotos.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Entrance Photos")
+                                .font(.headline)
+                                .padding(.horizontal)
+                                .padding(.top, 15)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(0..<photoManager.entrancePhotos.count, id: \.self) { index in
+                                        Button(action: {
+                                            selectedPreviewImage = photoManager.entrancePhotos[index]
+                                            showingImagePopup = true
+                                        }) {
+                                            Image(uiImage: photoManager.entrancePhotos[index])
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 100, height: 100)
+                                                .cornerRadius(8)
+                                                .clipped()
+                                        }
+                                    }
+                                    
+                                    // More button
+                                    if photoManager.canAddMorePhotos {
+                                        Button(action: {
+                                            showCameraView = true
+                                        }) {
+                                            VStack {
+                                                Image(systemName: "plus")
+                                                    .font(.system(size: 30))
+                                                Text("More")
+                                                    .font(.caption)
+                                            }
+                                            .foregroundColor(Color(hex: "#4A2511"))
+                                            .frame(width: 100, height: 100)
+                                            .background(Color.gray.opacity(0.2))
+                                            .cornerRadius(8)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
                     
                     // Room selection dropdown and Start Analysis button
                     HStack(spacing: 10) {
@@ -139,5 +195,58 @@ struct HomeAnalyzeView: View {
         }
         .background(Color.white.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
+        .onAppear {
+            photoManager.loadPhotos()
+        }
+        .fullScreenCover(isPresented: $showPhotoPreview, onDismiss: nil) {
+            if let image = selectedPreviewImage {
+                PhotoPreviewView(image: image)
+            }
+        }
+        .overlay(
+            Group {
+                if showingImagePopup, let image = selectedPreviewImage {
+                    ZStack {
+                        // Semi-transparent background
+                        Color.black.opacity(0.9)
+                            .edgesIgnoringSafeArea(.all)
+                            .onTapGesture {
+                                showingImagePopup = false
+                                selectedPreviewImage = nil
+                            }
+                        
+                        VStack {
+                            // Close button
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    showingImagePopup = false
+                                    selectedPreviewImage = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .padding()
+                            }
+                            
+                            Spacer()
+                            
+                            // Full image
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: UIScreen.main.bounds.width * 0.95)
+                                .frame(maxHeight: UIScreen.main.bounds.height * 0.8)
+                            
+                            Spacer()
+                        }
+                    }
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: showingImagePopup)
+                }
+            }
+        )
     }
 }

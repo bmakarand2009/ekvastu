@@ -44,91 +44,176 @@ class CameraService: NSObject, ObservableObject {
     
     private var photoCaptureCompletionBlock: ((UIImage?, Error?) -> Void)?
     
-    func checkPermissions() {
+    func checkPermissions(completion: @escaping (Bool) -> Void) {
+        print("Checking camera permissions...")
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .notDetermined:
-            sessionQueue.suspend()
+            print("Camera permission not determined, requesting access")
             AVCaptureDevice.requestAccess(for: .video) { authorized in
+                print("Camera authorization result: \(authorized)")
                 if !authorized {
-                    self.cameraError = .deniedAuthorization
-                    self.showCameraAlert = true
+                    DispatchQueue.main.async {
+                        self.cameraError = .deniedAuthorization
+                        self.showCameraAlert = true
+                    }
+                    completion(false)
+                } else {
+                    completion(true)
                 }
-                self.sessionQueue.resume()
             }
         case .restricted:
-            cameraError = .restrictedAuthorization
-            showCameraAlert = true
+            print("Camera access restricted")
+            DispatchQueue.main.async {
+                self.cameraError = .restrictedAuthorization
+                self.showCameraAlert = true
+            }
+            completion(false)
         case .denied:
-            cameraError = .deniedAuthorization
-            showCameraAlert = true
+            print("Camera access denied")
+            DispatchQueue.main.async {
+                self.cameraError = .deniedAuthorization
+                self.showCameraAlert = true
+            }
+            completion(false)
         case .authorized:
-            break
+            print("Camera access authorized")
+            completion(true)
         @unknown default:
-            break
+            print("Unknown camera authorization status")
+            completion(false)
         }
     }
     
     func setupAndStartCaptureSession() {
-        checkPermissions()
+        // Reset state
+        DispatchQueue.main.async {
+            self.isCameraReady = false
+        }
         
-        sessionQueue.async {
-            self.configureCaptureSession { success in
-                guard success else { return }
-                self.session.startRunning()
-                
+        checkPermissions { [weak self] granted in
+            guard let self = self, granted else { 
                 DispatchQueue.main.async {
-                    self.isCameraReady = true
+                    self?.cameraError = .deniedAuthorization
+                    self?.showCameraAlert = true
+                }
+                return 
+            }
+            
+            print("Camera permissions granted, configuring session")
+            self.sessionQueue.async {
+                // Stop session if it's running
+                if self.session.isRunning {
+                    self.session.stopRunning()
+                }
+                
+                // Reset session configuration
+                if self.isCaptureSessionConfigured {
+                    self.session.beginConfiguration()
+                    for input in self.session.inputs {
+                        self.session.removeInput(input)
+                    }
+                    for output in self.session.outputs {
+                        self.session.removeOutput(output)
+                    }
+                    self.session.commitConfiguration()
+                    self.isCaptureSessionConfigured = false
+                }
+                
+                self.configureCaptureSession { success in
+                    guard success else { 
+                        print("Failed to configure capture session")
+                        DispatchQueue.main.async {
+                            self.cameraError = .cameraUnavailable
+                            self.showCameraAlert = true
+                        }
+                        return 
+                    }
+                    
+                    print("Starting camera session")
+                    self.session.startRunning()
+                    
+                    // Ensure UI updates happen on main thread
+                    DispatchQueue.main.async {
+                        print("Camera is now ready")
+                        self.isCameraReady = true
+                    }
                 }
             }
         }
     }
     
     func configureCaptureSession(completionHandler: (_ success: Bool) -> Void) {
-        guard !isCaptureSessionConfigured else { return completionHandler(true) }
-        
-        session.beginConfiguration()
-        
-        defer {
-            session.commitConfiguration()
+        guard !isCaptureSessionConfigured else { 
+            print("Capture session already configured")
+            return completionHandler(true) 
         }
         
+        print("Beginning session configuration")
+        session.beginConfiguration()
+        
+        print("Finding camera device")
         let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
         
         guard let camera = videoDevice else {
-            cameraError = .cameraUnavailable
-            showCameraAlert = true
+            print("Camera unavailable")
+            session.commitConfiguration() // Make sure to commit before returning
+            DispatchQueue.main.async {
+                self.cameraError = .cameraUnavailable
+                self.showCameraAlert = true
+            }
             completionHandler(false)
             return
         }
         
+        print("Found camera device: \(camera.localizedName)")
+        
         do {
+            print("Creating video device input")
             let videoDeviceInput = try AVCaptureDeviceInput(device: camera)
             if session.canAddInput(videoDeviceInput) {
+                print("Adding video input to session")
                 session.addInput(videoDeviceInput)
                 self.videoDeviceInput = videoDeviceInput
             } else {
-                cameraError = .cannotAddInput
-                showCameraAlert = true
+                print("Cannot add video input to session")
+                session.commitConfiguration() // Make sure to commit before returning
+                DispatchQueue.main.async {
+                    self.cameraError = .cannotAddInput
+                    self.showCameraAlert = true
+                }
                 completionHandler(false)
                 return
             }
         } catch {
-            cameraError = .createCaptureInput(error)
-            showCameraAlert = true
+            print("Error creating capture input: \(error.localizedDescription)")
+            session.commitConfiguration() // Make sure to commit before returning
+            DispatchQueue.main.async {
+                self.cameraError = .createCaptureInput(error)
+                self.showCameraAlert = true
+            }
             completionHandler(false)
             return
         }
         
         if session.canAddOutput(output) {
+            print("Adding photo output to session")
             session.addOutput(output)
             output.isHighResolutionCaptureEnabled = true
             output.maxPhotoQualityPrioritization = .quality
         } else {
-            cameraError = .cannotAddOutput
-            showCameraAlert = true
+            print("Cannot add photo output to session")
+            session.commitConfiguration() // Make sure to commit before returning
+            DispatchQueue.main.async {
+                self.cameraError = .cannotAddOutput
+                self.showCameraAlert = true
+            }
             completionHandler(false)
             return
         }
+        
+        // Commit the configuration before marking as configured
+        session.commitConfiguration()
+        print("Session configuration committed")
         
         isCaptureSessionConfigured = true
         completionHandler(true)
@@ -150,9 +235,11 @@ class CameraService: NSObject, ObservableObject {
     }
     
     func stopSession() {
+        print("Stopping camera session")
         sessionQueue.async {
             if self.session.isRunning {
                 self.session.stopRunning()
+                print("Camera session stopped")
             }
         }
     }
