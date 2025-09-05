@@ -154,79 +154,15 @@ struct ImagePopupOverlayView: View {
     }
 }
 
-// Custom dropdown menu component
-struct RoomTypeDropdownMenu: View {
-    @Binding var selectedRoomType: String
-    @Binding var isRoomTypeSelected: Bool
-    @Binding var isDropdownOpen: Bool
-    let roomTypes: [String]
-    
-    var body: some View {
-        ZStack {
-            // Dropdown button
-            Button(action: {
-                withAnimation {
-                    isDropdownOpen.toggle()
-                }
-            }) {
-                HStack {
-                    Text(selectedRoomType)
-                        .foregroundColor(.black)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .foregroundColor(.gray)
-                        .rotationEffect(isDropdownOpen ? .degrees(180) : .degrees(0))
-                }
-                .padding()
-                .background(Color.white)
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Dropdown menu
-            if isDropdownOpen {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(roomTypes, id: \.self) { roomType in
-                        Button(action: {
-                            selectedRoomType = roomType
-                            isDropdownOpen = false
-                            isRoomTypeSelected = true
-                        }) {
-                            Text(roomType)
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
-                                .background(Color.white)
-                        }
-                        Divider()
-                    }
-                }
-                .background(Color.white)
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                )
-                .offset(y: 50)
-                .zIndex(1)
-            }
-        }
-    }
-}
+// This component is no longer needed as we're using RoomSelectionView instead
 
 struct HomeAnalyzeView: View {
-    @State private var selectedRoomType: String = "Select room type"
-    @State private var isRoomTypeSelected: Bool = false
-    @State private var isDropdownOpen = false
     @State private var showCameraView = false
     @State private var showPhotoPreview = false
     @State private var selectedPreviewImage: UIImage? = nil
     @State private var showingImagePopup = false
     @StateObject private var photoManager = EntrancePhotoManager()
+    @StateObject private var roomPhotoManager = RoomPhotoManager()
     
     // Adapter binding to convert between EntrancePhoto and UIImage arrays
     private var capturedImagesBinding: Binding<[UIImage]> {
@@ -251,15 +187,9 @@ struct HomeAnalyzeView: View {
         )
     }
     
-    // Room types available for selection
-    private let roomTypes = ["Living room", "Bedroom", "Office Room", "Kitchen", "Hall", "Balcony", "Study Room", "Bath Room"]
+    // This property is no longer needed as we're using photoManager.entrancePhotos.isEmpty directly
     
-    // Computed property to determine if the Analyze Entrance button should be enabled
-    private var analyzeEntranceButtonEnabled: Bool {
-        // Enable button only when there are no photos or fewer than max photos
-        return photoManager.entrancePhotos.isEmpty
-    }
-    
+    // ...
     // Extract photo thumbnails section to reduce complexity
     private var photoThumbnailsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -311,33 +241,22 @@ struct HomeAnalyzeView: View {
     
     // Extract room selection section to reduce complexity
     private var roomSelectionSection: some View {
-        HStack(spacing: 10) {
-            // Custom dropdown using extracted component
-            RoomTypeDropdownMenu(
-                selectedRoomType: $selectedRoomType,
-                isRoomTypeSelected: $isRoomTypeSelected,
-                isDropdownOpen: $isDropdownOpen,
-                roomTypes: roomTypes
-            )
-            .frame(width: UIScreen.main.bounds.width * 0.55)
+        VStack(spacing: 15) {
+            Text("Room Analysis")
+                .font(.headline)
+                .padding(.horizontal)
+                .padding(.top, 20)
             
-            // Start Analysis button
-            Button(action: {
-                // Action for starting analysis
-            }) {
-                Text("Start Analysis")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isRoomTypeSelected ? Color(hex: "#4A2511") : Color.gray)
-                    .cornerRadius(8)
+            // Display each room section
+            ForEach(0..<roomPhotoManager.rooms.count, id: \.self) { index in
+                RoomSelectionView(roomPhotoManager: roomPhotoManager, roomIndex: index)
             }
-            .disabled(!isRoomTypeSelected)
-            .buttonStyle(PlainButtonStyle())
+            
+            // Add Another Room button
+            if roomPhotoManager.canAddMoreRooms {
+                AddRoomView(roomPhotoManager: roomPhotoManager)
+            }
         }
-        .padding(.horizontal)
-        .padding(.top, 10)
     }
     
     var body: some View {
@@ -384,10 +303,10 @@ struct HomeAnalyzeView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(10)
-                            .background(analyzeEntranceButtonEnabled ? Color(hex: "#4A2511") : Color.gray)
+                            .background(photoManager.entrancePhotos.isEmpty ? Color(hex: "#4A2511") : Color.gray)
                             .cornerRadius(8)
                     }
-                    .disabled(!analyzeEntranceButtonEnabled)
+                    .disabled(!photoManager.entrancePhotos.isEmpty)
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal)
                     .padding(.top, 10)
@@ -400,8 +319,23 @@ struct HomeAnalyzeView: View {
                         photoThumbnailsSection
                     }
                     
-                    // Room selection using extracted component
-                    roomSelectionSection
+                    // Room sections
+                    VStack(spacing: 15) {
+                        Text("Room Analysis")
+                            .font(.headline)
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                        
+                        // Display each room section
+                        ForEach(0..<roomPhotoManager.rooms.count, id: \.self) { index in
+                            RoomSelectionView(roomPhotoManager: roomPhotoManager, roomIndex: index)
+                        }
+                        
+                        // Add Another Room button
+                        if roomPhotoManager.canAddMoreRooms {
+                            AddRoomView(roomPhotoManager: roomPhotoManager)
+                        }
+                    }
                 }
                 .padding(.bottom, 20)
             }
@@ -410,6 +344,7 @@ struct HomeAnalyzeView: View {
         .navigationBarHidden(true)
         .onAppear {
             photoManager.loadPhotos()
+            roomPhotoManager.loadRooms()
         }
         .fullScreenCover(isPresented: $showPhotoPreview, onDismiss: nil) {
             if let image = selectedPreviewImage {
