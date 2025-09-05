@@ -4,7 +4,6 @@ import Combine
 
 class CompassService: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
-    private let compassUpdateInterval: TimeInterval = 0.5
     
     @Published var heading: Double = 0.0
     @Published var direction: String = "N"
@@ -25,7 +24,15 @@ class CompassService: NSObject, ObservableObject {
     
     func startUpdates() {
         if CLLocationManager.headingAvailable() {
+            // Request location permission if needed for true heading
             locationManager.requestWhenInUseAuthorization()
+            
+            // Start location updates for true heading (uses GPS + compass)
+            if CLLocationManager.locationServicesEnabled() {
+                locationManager.startUpdatingLocation()
+            }
+            
+            // Start heading updates
             locationManager.startUpdatingHeading()
         } else {
             print("Compass not available on this device")
@@ -34,10 +41,15 @@ class CompassService: NSObject, ObservableObject {
     
     func stopUpdates() {
         locationManager.stopUpdatingHeading()
+        locationManager.stopUpdatingLocation()
     }
     
     private func getDirectionString(from heading: Double) -> String {
-        switch heading {
+        // Normalize heading to 0-360 range
+        let normalizedHeading = heading.truncatingRemainder(dividingBy: 360)
+        let positive = normalizedHeading < 0 ? normalizedHeading + 360 : normalizedHeading
+        
+        switch positive {
         case 0..<22.5, 337.5...360:
             return "N"
         case 22.5..<67.5:
@@ -62,25 +74,60 @@ class CompassService: NSObject, ObservableObject {
 
 extension CompassService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        // Use trueHeading if it's valid, otherwise use magneticHeading
-        let heading = newHeading.trueHeading > 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        // Use trueHeading if available (more accurate), otherwise use magneticHeading
+        let heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
         
         // Update the published properties on the main thread
         DispatchQueue.main.async {
-            self.heading = heading
+            // Smooth out the heading changes
+            let difference = abs(self.heading - heading)
+            
+            // Handle the 360/0 degree boundary
+            if difference > 180 {
+                // We're crossing the 360/0 boundary
+                if self.heading > heading {
+                    self.heading = heading
+                } else {
+                    self.heading = heading
+                }
+            } else {
+                // Normal update
+                self.heading = heading
+            }
+            
             self.direction = self.getDirectionString(from: heading)
+            
+            // Calibration is needed when headingAccuracy is negative
             self.isCalibrating = newHeading.headingAccuracy < 0
         }
     }
     
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // Location updates help improve true heading accuracy
+        // No need to process the location data, just having updates helps the compass
+    }
+    
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Compass error: \(error.localizedDescription)")
+        print("Location/Compass error: \(error.localizedDescription)")
         
-        if let error = error as? CLError, error.code == .headingFailure {
-            // Handle compass calibration needed
-            DispatchQueue.main.async {
-                self.isCalibrating = true
+        if let error = error as? CLError {
+            switch error.code {
+            case .headingFailure:
+                // Handle compass calibration needed
+                DispatchQueue.main.async {
+                    self.isCalibrating = true
+                }
+            case .denied, .locationUnknown:
+                // Handle location permission issues
+                print("Location services denied or unavailable")
+            default:
+                break
             }
         }
+    }
+    
+    func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {
+        // Return true to allow iOS to show the figure-8 calibration screen
+        return true
     }
 }
