@@ -79,17 +79,33 @@ struct HomeAnalyzeView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 10) {
                                     ForEach(0..<photoManager.entrancePhotos.count, id: \.self) { index in
-                                        Button(action: {
-                                            selectedPreviewImage = photoManager.entrancePhotos[index]
-                                            showingImagePopup = true
-                                        }) {
-                                            Image(uiImage: photoManager.entrancePhotos[index])
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 100, height: 100)
-                                                .cornerRadius(8)
-                                                .clipped()
+                                        VStack(spacing: 5) {
+                                            // Image thumbnail with tap action
+                                            Button(action: {
+                                                selectedPreviewImage = photoManager.entrancePhotos[index]
+                                                showingImagePopup = true
+                                            }) {
+                                                Image(uiImage: photoManager.entrancePhotos[index])
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                                    .frame(width: 100, height: 100)
+                                                    .cornerRadius(8)
+                                                    .clipped()
+                                            }
+                                            
+                                            // Delete button
+                                            Button(action: {
+                                                photoManager.deletePhoto(at: index)
+                                            }) {
+                                                Image(systemName: "trash.fill")
+                                                    .foregroundColor(.red)
+                                                    .frame(width: 30, height: 30)
+                                                    .background(Circle().fill(Color.white.opacity(0.8)))
+                                                    .shadow(radius: 2)
+                                            }
+                                            .offset(y: -15) // Move up to overlap with the image
                                         }
+                                        .frame(width: 100, height: 120) // Adjust height to accommodate delete button
                                     }
                                     
                                     // More button
@@ -103,11 +119,12 @@ struct HomeAnalyzeView: View {
                                                 Text("More")
                                                     .font(.caption)
                                             }
+                                           
                                             .foregroundColor(Color(hex: "#4A2511"))
-                                            .frame(width: 100, height: 100)
+                                            .frame(width: 80, height: 80)
                                             .background(Color.gray.opacity(0.2))
-                                            .cornerRadius(8)
-                                        }
+                                            .cornerRadius(10)
+                                        } .padding(.top, -30)
                                     }
                                 }
                                 .padding(.horizontal)

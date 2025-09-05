@@ -21,14 +21,17 @@ struct SplashScreen: View {
                             UserDetailsForm()
                                 .environment(\.managedObjectContext, viewContext)
                                 .environmentObject(authManager)
+                                .buttonStyle(.plain)
                         case .propertyAddress:
                             PropertyAddressScreen()
                                 .environment(\.managedObjectContext, viewContext)
                                 .environmentObject(authManager)
+                                .buttonStyle(.plain)
                         case .mainContent:
                             ContentView()
                                 .environment(\.managedObjectContext, viewContext)
                                 .environmentObject(authManager)
+                                .buttonStyle(.plain)
                         }
                     }
                 } else {

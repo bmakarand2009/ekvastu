@@ -35,6 +35,7 @@
 		E70B06722E6604EC0015B277 /* GooglePlacesSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06712E6604EC0015B277 /* GooglePlacesSwift */; };
 		E70B06752E6604F90015B277 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06742E6604F90015B277 /* GoogleSignIn */; };
 		E70B06772E6604F90015B277 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06762E6604F90015B277 /* GoogleSignInSwift */; };
+		E710E7D12E6B297A006B635C /* Cloudinary in Frameworks */ = {isa = PBXBuildFile; productRef = E710E7D02E6B297A006B635C /* Cloudinary */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -79,6 +80,7 @@
 				E70B06722E6604EC0015B277 /* GooglePlacesSwift in Frameworks */,
 				E70B06462E6604930015B277 /* FirebaseAppCheck in Frameworks */,
 				E70B063E2E6604930015B277 /* FirebaseAI in Frameworks */,
+				E710E7D12E6B297A006B635C /* Cloudinary in Frameworks */,
 				E70B06542E6604930015B277 /* FirebaseFirestore in Frameworks */,
 				E70B06622E6604930015B277 /* FirebaseMessaging in Frameworks */,
 				E70B065E2E6604930015B277 /* FirebaseInstallations in Frameworks */,
@@ -165,6 +167,7 @@
 				E70B06712E6604EC0015B277 /* GooglePlacesSwift */,
 				E70B06742E6604F90015B277 /* GoogleSignIn */,
 				E70B06762E6604F90015B277 /* GoogleSignInSwift */,
+				E710E7D02E6B297A006B635C /* Cloudinary */,
 			);
 			productName = EkVastuAppIos;
 			productReference = E70B05602E65FE4A0015B277 /* EkVastuAppIos.app */;
@@ -199,6 +202,7 @@
 				E70B066B2E6604E00015B277 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
 				E70B066E2E6604EC0015B277 /* XCRemoteSwiftPackageReference "ios-places-sdk" */,
 				E70B06732E6604F90015B277 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				E710E7CF2E6B297A006B635C /* XCRemoteSwiftPackageReference "cloudinary_ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E70B05612E65FE4A0015B277 /* Products */;
@@ -485,6 +489,14 @@
 				minimumVersion = 9.0.0;
 			};
 		};
+		E710E7CF2E6B297A006B635C /* XCRemoteSwiftPackageReference "cloudinary_ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/cloudinary/cloudinary_ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.2.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -627,6 +639,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E70B06732E6604F90015B277 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		E710E7D02E6B297A006B635C /* Cloudinary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E710E7CF2E6B297A006B635C /* XCRemoteSwiftPackageReference "cloudinary_ios" */;
+			productName = Cloudinary;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

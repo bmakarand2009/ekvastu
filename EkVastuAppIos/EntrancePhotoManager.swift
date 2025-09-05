@@ -49,6 +49,13 @@ class EntrancePhotoManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "entrancePhotos")
     }
     
+    // Delete a specific photo by index
+    func deletePhoto(at index: Int) {
+        guard index >= 0 && index < entrancePhotos.count else { return }
+        entrancePhotos.remove(at: index)
+        savePhotos()
+    }
+    
     init() {
         loadPhotos()
     }
