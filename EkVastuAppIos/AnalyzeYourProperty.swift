@@ -50,10 +50,4 @@ struct AnalyzeYourProperty: View {
         }
     }
 }
-
-
-struct AnalyzeYourProperty_Previews: PreviewProvider {
-    static var previews: some View {
-        AnalyzeYourProperty()
-    }
-}
+ 

@@ -22,7 +22,7 @@ struct PropertyAddressListScreen: View {
         ZStack {
             // Background gradient
             LinearGradient(
-                gradient: Gradient(colors: [Color(hex: "#FFCC99"), Color(hex: "#FFCC99")]),
+                gradient: Gradient(colors: [Color(hex: "#F9CBA6"), Color(hex: "#FFF4EB")]),
                 startPoint: .top,
                 endPoint: .bottom
             )

@@ -47,7 +47,7 @@ struct PropertyAddressScreen: View {
         ZStack {
             // Background gradient
             LinearGradient(
-                gradient: Gradient(colors: [Color(hex: "#ECD2BE"), Color(hex: "#FEA45A")]),
+                gradient: Gradient(colors: [Color(hex: "#F9CBA6"), Color(hex: "#FFF4EB")]),
                 startPoint: .top,
                 endPoint: .bottom
             )
