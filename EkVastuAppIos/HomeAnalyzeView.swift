@@ -20,6 +20,8 @@ struct HomeAnalyzeView: View {
     // Photo management
     @State private var entrancePhotos: [CapturedPhoto] = []
     @State private var roomPhotos: [CapturedPhoto] = []
+    @State private var maxPhotosForCamera = 4
+    @State private var existingPhotosForCamera = 0
     
     // Property type passed from previous screen
     let selectedPropertyType: String
@@ -29,6 +31,7 @@ struct HomeAnalyzeView: View {
     // Services
     private let roomService = RoomService.shared
     private let propertyService = PropertyService.shared
+    private let photoService = PhotoService.shared
     
     // Available property types
     private let propertyTypes = ["residential", "commercial", "work", "other"]
@@ -358,11 +361,8 @@ struct HomeAnalyzeView: View {
                 
                 // Start Analysis button for room
                 Button(action: {
-                    // Handle room analysis
                     if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
-                        print("Starting analysis for room: \(room.name) (ID: \(room.id))")
-                        // Open camera for the selected room
-                        showCameraView = true
+                        checkAndStartAnalysis(for: room)
                     }
                 }) {
                     Text("Start Analysis")
@@ -555,9 +555,8 @@ struct HomeAnalyzeView: View {
                     HStack {
                         Spacer()
                         Button(action: {
-                            // Only open camera if we have an entrance room
                             if let entranceRoom = entranceObject {
-                                showEntranceCameraView = true
+                                checkAndStartEntranceAnalysis(for: entranceRoom)
                             } else {
                                 alertMessage = "Entrance room not found. Please try again."
                                 showAlert = true
@@ -583,6 +582,53 @@ struct HomeAnalyzeView: View {
         .cornerRadius(15)
         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 20)
+    }
+    
+    // Photo limit checks
+    private func checkAndStartAnalysis(for room: RoomData) {
+        photoService.getPhotosInRoom(roomId: room.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    let existing = response.data?.count ?? 0
+                    let allowed = max(0, 4 - existing)
+                    if allowed <= 0 {
+                        self.alertMessage = "You already have 4 photos for \(room.name). Delete some to take more."
+                        self.showAlert = true
+                    } else {
+                        self.existingPhotosForCamera = existing
+                        self.maxPhotosForCamera = 4
+                        self.showCameraView = true
+                    }
+                case .failure(let error):
+                    self.alertMessage = "Failed to check existing photos: \(error.localizedDescription)"
+                    self.showAlert = true
+                }
+            }
+        }
+    }
+    
+    private func checkAndStartEntranceAnalysis(for entranceRoom: RoomData) {
+        photoService.getPhotosInRoom(roomId: entranceRoom.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    let existing = response.data?.count ?? 0
+                    let allowed = max(0, 4 - existing)
+                    if allowed <= 0 {
+                        self.alertMessage = "You already have 4 photos for \(entranceRoom.name). Delete some to take more."
+                        self.showAlert = true
+                    } else {
+                        self.existingPhotosForCamera = existing
+                        self.maxPhotosForCamera = 4
+                        self.showEntranceCameraView = true
+                    }
+                case .failure(let error):
+                    self.alertMessage = "Failed to check existing photos: \(error.localizedDescription)"
+                    self.showAlert = true
+                }
+            }
+        }
     }
     
     var body: some View {
@@ -635,7 +681,8 @@ struct HomeAnalyzeView: View {
                 RoomCameraView(
                     roomId: room.id,
                     roomName: room.name,
-                    maxPhotos: 4
+                    maxPhotos: maxPhotosForCamera,
+                    existingPhotosCount: existingPhotosForCamera
                 )
             }
         }
@@ -645,7 +692,8 @@ struct HomeAnalyzeView: View {
                 RoomCameraView(
                     roomId: entranceRoom.id,
                     roomName: entranceRoom.name,
-                    maxPhotos: 4
+                    maxPhotos: maxPhotosForCamera,
+                    existingPhotosCount: existingPhotosForCamera
                 )
             }
         }

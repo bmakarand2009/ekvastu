@@ -26,6 +26,7 @@ struct RoomCameraView: View {
     let roomId: String
     let roomName: String
     let maxPhotos: Int
+    let existingPhotosCount: Int
     
     // Alert handling with enum
     enum AlertType: Identifiable {
@@ -217,15 +218,15 @@ struct RoomCameraView: View {
                                         .frame(width: 60, height: 60)
                                 )
                         }
-                        .disabled(capturedPhotos.count >= maxPhotos)
-                        .opacity(capturedPhotos.count >= maxPhotos ? 0.5 : 1)
+                        .disabled(capturedPhotos.count >= (maxPhotos - existingPhotosCount))
+                        .opacity(capturedPhotos.count >= (maxPhotos - existingPhotosCount) ? 0.5 : 1)
                         
                         Spacer()
                     }
                     .padding(.bottom, 30)
                     
                     // Photo count indicator
-                    Text("\(capturedPhotos.count)/\(maxPhotos) Photos")
+                    Text("\(existingPhotosCount + capturedPhotos.count)/\(maxPhotos) Photos")
                         .foregroundColor(.white)
                         .font(.caption)
                         .padding(.bottom, 10)
@@ -320,7 +321,7 @@ struct RoomCameraView: View {
                     }
                     
                     // Next button (only if not at max photos)
-                    if capturedPhotos.count < maxPhotos {
+                    if capturedPhotos.count < (maxPhotos - existingPhotosCount) {
                         Button(action: {
                             saveAndUploadPhoto(photo)
                             // Return to camera to take next photo
@@ -581,8 +582,8 @@ struct RoomCameraView: View {
                                 DispatchQueue.main.async {
                                     self.capturedPhotos[photoIndex].isUploaded = true
                                     
-                                    // If we've reached max photos, dismiss the camera view
-                                    if self.capturedPhotos.count >= self.maxPhotos {
+                                    // If we've reached remaining slots, dismiss the camera view
+                                    if self.capturedPhotos.count >= (self.maxPhotos - self.existingPhotosCount) {
                                         self.presentationMode.wrappedValue.dismiss()
                                     }
                                 }
@@ -603,12 +604,12 @@ struct RoomCameraView: View {
                 }
             }
             
-            // Return to camera view if not at max photos
-            if self.capturedPhotos.count < self.maxPhotos {
+            // Return to camera view if not at remaining slots
+            if self.capturedPhotos.count < (self.maxPhotos - self.existingPhotosCount) {
                 self.currentPhoto = nil
                 self.isCameraActive = true
             } else {
-                // If this was the last photo, dismiss the camera view
+                // If this was the last allowed photo, dismiss the camera view
                 self.presentationMode.wrappedValue.dismiss()
             }
         }
