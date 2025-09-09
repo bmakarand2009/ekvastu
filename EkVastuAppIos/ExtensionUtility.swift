@@ -30,3 +30,10 @@ extension Color {
    
 }
 
+// Safe index access for arrays
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
+}
+

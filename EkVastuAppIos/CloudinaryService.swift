@@ -330,6 +330,46 @@ class CloudinaryService: ObservableObject {
         }
     }
     
+    // MARK: - Delete Image by URL
+    func deleteWithUrl(url: String) async throws -> CloudinaryDeleteResponse {
+        try validateConfiguration()
+        guard let publicId = extractPublicId(from: url), !publicId.isEmpty else {
+            throw CloudinaryError.missingPublicId
+        }
+        return try await deleteByPublicId(publicId: publicId)
+    }
+    
+    private func extractPublicId(from urlString: String) -> String? {
+        guard let url = URL(string: urlString) else { return nil }
+        var path = url.path
+        path = path.removingPercentEncoding ?? path
+        // Expect path like: /image/upload/v12345/folder/name.ext (with optional version)
+        guard let uploadRange = path.range(of: "/upload/") else { return nil }
+        var after = String(path[uploadRange.upperBound...])
+        var segments = after.split(separator: "/").map(String.init)
+        // Drop version segment if present (v + digits)
+        if let first = segments.first, first.hasPrefix("v"), Int(first.dropFirst()) != nil {
+            segments.removeFirst()
+        }
+        guard !segments.isEmpty else { return nil }
+        // Remove file extension from last segment
+        if var last = segments.last, let dot = last.lastIndex(of: ".") {
+            last = String(last[..<dot])
+            segments[segments.count - 1] = last
+        }
+        let publicId = segments.joined(separator: "/")
+        return publicId.isEmpty ? nil : publicId
+    }
+    
+    // MARK: - Delete Image by Public ID
+    func deleteByPublicId(publicId: String) async throws -> CloudinaryDeleteResponse {
+        try validateConfiguration()
+        guard !publicId.isEmpty else { throw CloudinaryError.missingPublicId }
+        isDeleting = true
+        defer { isDeleting = false }
+        return try await performDeleteByPublicIds(publicIds: [publicId])
+    }
+    
     // MARK: - Get Image Info by Asset ID
     func getImageInfo(assetId: String) async throws -> CloudinaryImageInfo {
         try validateConfiguration()
@@ -495,18 +535,81 @@ class CloudinaryService: ObservableObject {
         
         // Handle the actual delete response structure
         do {
-            // First try to parse as CloudinaryDeleteResponse
             let deleteResponse = try JSONDecoder().decode(CloudinaryDeleteResponse.self, from: data)
             return deleteResponse
         } catch {
-            // If that fails, try parsing as a simpler structure and create a response
             if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 print("Delete response JSON: \(jsonResponse)")
-                
-                // Create a minimal response structure for successful deletion
                 let simpleResponse = CloudinaryDeleteResponse(
                     deleted: [assetId: "deleted"],
                     deletedCounts: DeletedCounts(original: 1, derived: 0),
+                    partial: false,
+                    rateLimitAllowed: 500,
+                    rateLimitResetAt: "",
+                    rateLimitRemaining: 499
+                )
+                return simpleResponse
+            } else {
+                print("JSON Decode Error: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Response JSON: \(jsonString)")
+                }
+                throw CloudinaryError.invalidResponse
+            }
+        }
+    }
+    
+    private func performDeleteByPublicIds(publicIds: [String]) async throws -> CloudinaryDeleteResponse {
+        // Endpoint for deleting by public_ids
+        let url = URL(string: "https://api.cloudinary.com/v1_1/\(cloudName)/resources/image/upload")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let credentials = "\(apiKey):\(apiSecret)"
+        if let credentialsData = credentials.data(using: .utf8) {
+            let base64Credentials = credentialsData.base64EncodedString()
+            request.setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let deleteBody: [String: Any] = [
+            "public_ids": publicIds
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: deleteBody)
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw CloudinaryError.invalidResponse
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw CloudinaryError.deleteFailed("Invalid API credentials. Please check your API key and secret in Config.plist.")
+        }
+        
+        if httpResponse.statusCode != 200 {
+            if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMessage = errorData["error"] as? [String: Any],
+               let message = errorMessage["message"] as? String {
+                throw CloudinaryError.deleteFailed(message)
+            } else {
+                throw CloudinaryError.deleteFailed("HTTP \(httpResponse.statusCode)")
+            }
+        }
+        
+        do {
+            let deleteResponse = try JSONDecoder().decode(CloudinaryDeleteResponse.self, from: data)
+            return deleteResponse
+        } catch {
+            if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                print("Delete response JSON: \(jsonResponse)")
+                var deletedMap: [String: String] = [:]
+                publicIds.forEach { deletedMap[$0] = "deleted" }
+                let simpleResponse = CloudinaryDeleteResponse(
+                    deleted: deletedMap,
+                    deletedCounts: DeletedCounts(original: publicIds.count, derived: 0),
                     partial: false,
                     rateLimitAllowed: 500,
                     rateLimitResetAt: "",

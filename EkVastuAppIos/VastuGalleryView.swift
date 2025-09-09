@@ -205,7 +205,7 @@ struct VastuGalleryView: View {
                     Text(room.name)
                         .font(.headline)
                     
-                    if !room.photos.isEmpty {
+                    if !room.photos.isEmpty && room.type.lowercased() == "entrance" {
                         NavigationLink(destination: GalleryRoomDetailView(room: room)) {
                             Text("View Analysis")
                                 .font(.subheadline)
@@ -217,12 +217,10 @@ struct VastuGalleryView: View {
                 
                 Spacer()
                 
-                // Delete button
-                Button(action: {
-                    // Delete room functionality would go here
-                }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.gray)
+                // View (eye) icon - shows photos grid on tap (for all room types)
+                NavigationLink(destination: GalleryRoomDetailView(room: room)) {
+                    Image(systemName: "eye")
+                        .foregroundColor(Color(hex: "#DD8E2E"))
                         .padding(8)
                 }
             }
@@ -378,12 +376,181 @@ struct VastuGalleryView: View {
     }
 }
 
+// MARK: - Entrance Photos Grid View (80x80, with delete per photo)
+struct EntrancePhotosGridView: View {
+    let room: VastuGalleryView.RoomWithPhotos
+    @State private var isLoading = true
+    @State private var photos: [UIImage?] = []
+    @State private var showDeleteConfirm = false
+    @State private var deleteIndex: Int? = nil
+    @State private var alertMessage: AlertMessage? = nil
+    
+    private let photoService = PhotoService.shared
+    private let cloudinaryService = CloudinaryService()
+    
+    struct AlertMessage: Identifiable {
+        let id = UUID()
+        let text: String
+    }
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#FFF1E6").edgesIgnoringSafeArea(.all)
+            VStack {
+                if isLoading {
+                    Spacer()
+                    ProgressView()
+                    Text("Loading photos...").padding(.top, 8)
+                    Spacer()
+                } else if room.photos.isEmpty {
+                    Spacer()
+                    Text("No photos available").foregroundColor(.gray)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.fixed(80)), GridItem(.fixed(80)), GridItem(.fixed(80)), GridItem(.fixed(80))], spacing: 12) {
+                            ForEach(Array(room.photos.enumerated()), id: \.offset) { index, photoMeta in
+                                VStack(spacing: 6) {
+                                    if let image = photos[safe: index] ?? nil {
+                                        Image(uiImage: image)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 80, height: 80)
+                                            .clipped()
+                                            .cornerRadius(8)
+                                    } else {
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(width: 80, height: 80)
+                                            .cornerRadius(8)
+                                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
+                                    }
+                                    Button(action: { confirmDelete(index: index) }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+        }
+        .navigationBarTitle("View Analysis", displayMode: .inline)
+        .onAppear { loadImages() }
+        .alert(item: $alertMessage) { msg in
+            Alert(title: Text("Info"), message: Text(msg.text), dismissButton: .default(Text("OK")))
+        }
+        .confirmationDialog("Are you sure you want to delete this photo?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) { showDeleteConfirm = false; deleteIndex = nil }
+        }
+    }
+    
+    private func loadImages() {
+        isLoading = true
+        photos = Array(repeating: nil, count: room.photos.count)
+        let group = DispatchGroup()
+        for (index, p) in room.photos.enumerated() {
+            group.enter()
+            Task {
+                if let url = URL(string: p.uri) {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        let image = UIImage(data: data)
+                        DispatchQueue.main.async { self.photos[index] = image; group.leave() }
+                    } catch {
+                        DispatchQueue.main.async { group.leave() }
+                    }
+                } else {
+                    DispatchQueue.main.async { group.leave() }
+                }
+            }
+        }
+        group.notify(queue: .main) { isLoading = false }
+    }
+    
+    private func confirmDelete(index: Int) {
+        deleteIndex = index
+        showDeleteConfirm = true
+    }
+    
+    private func performDelete() {
+        guard let idx = deleteIndex else { return }
+        showDeleteConfirm = false
+        let photoMeta = room.photos[idx]
+        Task {
+            var cloudErr: String? = nil
+            var apiErr: String? = nil
+            // Delete from Cloudinary using the URL directly; proceed to API only if it succeeds
+            do {
+                _ = try await cloudinaryService.deleteWithUrl(url: photoMeta.uri)
+            } catch {
+                cloudErr = error.localizedDescription
+            }
+            if cloudErr == nil {
+                do {
+                    _ = try await photoService.deletePhoto(id: photoMeta.id)
+                } catch {
+                    apiErr = error.localizedDescription
+                }
+            }
+            DispatchQueue.main.async {
+                var parts: [String] = ["URL: \(photoMeta.uri)"]
+                if let c = cloudErr {
+                    parts.append("Cloudinary delete failed: \(c)")
+                    parts.append("API delete skipped due to Cloudinary failure")
+                } else {
+                    parts.append("Cloudinary delete success")
+                    if let a = apiErr {
+                        parts.append("API delete failed: \(a)")
+                    } else {
+                        parts.append("API delete success")
+                    }
+                }
+                self.alertMessage = AlertMessage(text: parts.joined(separator: "\n"))
+            }
+        }
+    }
+    
+    // Extract Cloudinary asset_id (last filename without extension) from URL
+    private func cloudinaryAssetId(from uri: String) -> String? {
+        guard let url = URL(string: uri) else { return nil }
+        let path = (url.path.removingPercentEncoding ?? url.path)
+        if let uploadRange = path.range(of: "/upload/") {
+            let after = String(path[uploadRange.upperBound...])
+            let segments = after.split(separator: "/").map(String.init)
+            if let lastSeg = segments.last {
+                let base = lastSeg.split(separator: ".").first.map(String.init) ?? lastSeg
+                return base.isEmpty ? nil : base
+            }
+            return nil
+        } else {
+            let last = url.deletingPathExtension().lastPathComponent
+            return last.isEmpty ? nil : last
+        }
+    }
+}
+
 // MARK: - Room Detail View
 struct GalleryRoomDetailView: View {
     let room: VastuGalleryView.RoomWithPhotos
     @State private var photos: [UIImage?] = []
     @State private var isLoading = true
+    @State private var photoMetas: [PhotoData] = []
+    @State private var showDeleteConfirm = false
+    @State private var deleteIndex: Int? = nil
+    @State private var alertMessage: AlertMessage? = nil
     @Environment(\.presentationMode) var presentationMode
+    
+    private let photoService = PhotoService.shared
+    private let cloudinaryService = CloudinaryService()
+    
+    struct AlertMessage: Identifiable {
+        let id = UUID()
+        let text: String
+    }
     
     var body: some View {
         ZStack {
@@ -410,30 +577,34 @@ struct GalleryRoomDetailView: View {
                         .foregroundColor(.gray)
                     Spacer()
                 } else {
-                    // Photos grid
+                    // Photos grid 100x100 with delete button
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
-                            ForEach(0..<photos.count, id: \.self) { index in
-                                if let photo = photos[index] {
-                                    NavigationLink(destination: FullScreenPhotoView(image: photo)) {
-                                        Image(uiImage: photo)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(height: 180)
-                                            .clipped()
-                                            .cornerRadius(12)
-                                            .shadow(color: Color.black.opacity(0.2), radius: 3, x: 0, y: 2)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100, maximum: 100))], spacing: 12) {
+                            ForEach(Array(photoMetas.enumerated()), id: \.offset) { index, _ in
+                                VStack(spacing: 6) {
+                                    if let image = photos.indices.contains(index) ? photos[index] : nil {
+                                        NavigationLink(destination: FullScreenPhotoView(image: image)) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 100, height: 100)
+                                                .clipped()
+                                                .cornerRadius(8)
+                                        }
+                                    } else {
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(width: 100, height: 100)
+                                            .cornerRadius(8)
+                                            .overlay(
+                                                Image(systemName: "photo")
+                                                    .foregroundColor(.gray)
+                                            )
                                     }
-                                } else {
-                                    Rectangle()
-                                        .fill(Color.gray.opacity(0.3))
-                                        .frame(height: 180)
-                                        .cornerRadius(12)
-                                        .overlay(
-                                            Image(systemName: "photo")
-                                                .font(.system(size: 30))
-                                                .foregroundColor(.gray)
-                                        )
+                                    Button(action: { confirmDelete(index: index) }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
                                 }
                             }
                         }
@@ -445,21 +616,27 @@ struct GalleryRoomDetailView: View {
             .navigationBarBackButtonHidden(false)
         }
         .onAppear {
+            photoMetas = room.photos
             loadPhotos()
+        }
+        .alert(item: $alertMessage) { msg in
+            Alert(title: Text("Info"), message: Text(msg.text), dismissButton: .default(Text("OK")))
+        }
+        .confirmationDialog("Are you sure you want to delete this photo?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) { showDeleteConfirm = false; deleteIndex = nil }
         }
     }
     
     // Load all photos for the room
     private func loadPhotos() {
         isLoading = true
-        photos = Array(repeating: nil, count: room.photos.count)
+        photos = Array(repeating: nil, count: photoMetas.count)
         
         let group = DispatchGroup()
         
-        for (index, photo) in room.photos.enumerated() {
-            // uri is non-optional in PhotoData model, so we don't need to check if it exists
+        for (index, photo) in photoMetas.enumerated() {
             group.enter()
-            
             Task {
                 guard let url = URL(string: photo.uri) else {
                     DispatchQueue.main.async { group.leave() }
@@ -469,7 +646,9 @@ struct GalleryRoomDetailView: View {
                     let (data, _) = try await URLSession.shared.data(from: url)
                     let image = UIImage(data: data)
                     DispatchQueue.main.async {
-                        self.photos[index] = image
+                        if index < self.photos.count {
+                            self.photos[index] = image
+                        }
                         group.leave()
                     }
                 } catch {
@@ -483,6 +662,69 @@ struct GalleryRoomDetailView: View {
         
         group.notify(queue: .main) {
             self.isLoading = false
+        }
+    }
+    
+    private func confirmDelete(index: Int) {
+        deleteIndex = index
+        showDeleteConfirm = true
+    }
+    
+    private func performDelete() {
+        guard let idx = deleteIndex, idx < photoMetas.count else { return }
+        showDeleteConfirm = false
+        let photoMeta = photoMetas[idx]
+        Task {
+            var cloudErr: String? = nil
+            var apiErr: String? = nil
+            do {
+                _ = try await cloudinaryService.deleteWithUrl(url: photoMeta.uri)
+            } catch {
+                cloudErr = error.localizedDescription
+            }
+            if cloudErr == nil {
+                do {
+                    _ = try await photoService.deletePhoto(id: photoMeta.id)
+                } catch {
+                    apiErr = error.localizedDescription
+                }
+            }
+            DispatchQueue.main.async {
+                if cloudErr == nil && apiErr == nil {
+                    self.photoMetas.remove(at: idx)
+                    if idx < self.photos.count { self.photos.remove(at: idx) }
+                }
+                var parts: [String] = ["URL: \(photoMeta.uri)"]
+                if let c = cloudErr {
+                    parts.append("Cloudinary delete failed: \(c)")
+                    parts.append("API delete skipped due to Cloudinary failure")
+                } else {
+                    parts.append("Cloudinary delete success")
+                    if let a = apiErr {
+                        parts.append("API delete failed: \(a)")
+                    } else {
+                        parts.append("API delete success")
+                    }
+                }
+                self.alertMessage = AlertMessage(text: parts.joined(separator: "\n"))
+            }
+        }
+    }
+    
+    private func cloudinaryAssetId(from uri: String) -> String? {
+        guard let url = URL(string: uri) else { return nil }
+        let path = (url.path.removingPercentEncoding ?? url.path)
+        if let uploadRange = path.range(of: "/upload/") {
+            let after = String(path[uploadRange.upperBound...])
+            let segments = after.split(separator: "/").map(String.init)
+            if let lastSeg = segments.last {
+                let base = lastSeg.split(separator: ".").first.map(String.init) ?? lastSeg
+                return base.isEmpty ? nil : base
+            }
+            return nil
+        } else {
+            let last = url.deletingPathExtension().lastPathComponent
+            return last.isEmpty ? nil : last
         }
     }
 }
