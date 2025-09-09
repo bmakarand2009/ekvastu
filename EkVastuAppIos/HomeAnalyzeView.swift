@@ -1,371 +1,665 @@
 import SwiftUI
-import AVFoundation
-
-// Thumbnail view component for entrance photos
-struct EntrancePhotoThumbnailView: View {
-    let photo: EntrancePhoto
-    let index: Int
-    let isUploading: Bool
-    var onTap: () -> Void
-    var onDelete: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 5) {
-            // Image thumbnail with tap action
-            Button(action: onTap) {
-                ZStack {
-                    Image(uiImage: photo.image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 100, height: 100)
-                        .cornerRadius(8)
-                        .clipped()
-                    
-                    // Show upload indicator if no assetId yet
-                    if photo.assetId == nil && isUploading {
-                        Color.black.opacity(0.5)
-                            .frame(width: 100, height: 100)
-                            .cornerRadius(8)
-                        
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                    }
-                    
-                    // Show cloud icon if successfully uploaded
-                    if photo.assetId != nil {
-                        VStack {
-                            Spacer()
-                            HStack {
-                                Spacer()
-                                Image(systemName: "cloud.fill")
-                                    .foregroundColor(.green)
-                                    .padding(5)
-                                    .background(Circle().fill(Color.white.opacity(0.8)))
-                            }
-                        }
-                        .padding(5)
-                    }
-                }
-            }
-            
-            // Delete button
-            Button(action: onDelete) {
-                Image(systemName: "trash.fill")
-                    .foregroundColor(.red)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.white.opacity(0.8)))
-                    .shadow(radius: 2)
-            }
-            .offset(y: -15) // Move up to overlap with the image
-            .disabled(photo.assetId == nil && isUploading) // Disable delete during upload
-            .opacity(photo.assetId == nil && isUploading ? 0.5 : 1) // Dim during upload
-        }
-        .frame(width: 100, height: 120) // Adjust height to accommodate delete button
-    }
-}
-
-// Image popup overlay for full-screen preview
-struct ImagePopupOverlayView: View {
-    let image: UIImage
-    let entrancePhotos: [EntrancePhoto]
-    let isUploading: Bool
-    var onClose: () -> Void
-    
-    var body: some View {
-        ZStack {
-            // Semi-transparent background
-            Color.black.opacity(0.9)
-                .edgesIgnoringSafeArea(.all)
-                .onTapGesture(perform: onClose)
-            
-            VStack(spacing: 10) {
-                // Close button
-                HStack {
-                    Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding()
-                }
-                
-                Spacer()
-                
-                // Full image
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: UIScreen.main.bounds.width * 0.95)
-                    .frame(maxHeight: UIScreen.main.bounds.height * 0.7)
-                
-                // Find the corresponding photo to display metadata
-                let selectedPhoto = entrancePhotos.first(where: { $0.image == image })
-                
-                // Cloudinary metadata
-                Group {
-                    if let photo = selectedPhoto, let assetId = photo.assetId {
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack {
-                                Image(systemName: "cloud.fill")
-                                    .foregroundColor(.green)
-                                Text("Uploaded to Cloudinary")
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                            }
-                            
-                            Text("Asset ID: \(assetId)")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        .padding(10)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(8)
-                    } else if isUploading {
-                        HStack {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            Text("Uploading to Cloudinary...")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                        }
-                        .padding(10)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(8)
-                    } else {
-                        Text("Not uploaded to Cloudinary")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.black.opacity(0.7))
-                            .cornerRadius(8)
-                    }
-                }
-                
-                Spacer()
-            }
-        }
-        .transition(.opacity)
-        .animation(.easeInOut(duration: 0.2), value: true)
-    }
-}
-
-// This component is no longer needed as we're using RoomSelectionView instead
 
 struct HomeAnalyzeView: View {
     @State private var showCameraView = false
-    @State private var showPhotoPreview = false
-    @State private var selectedPreviewImage: UIImage? = nil
-    @State private var showingImagePopup = false
-    @StateObject private var photoManager = EntrancePhotoManager()
-    @StateObject private var roomPhotoManager = RoomPhotoManager()
+    @State private var showEntranceCameraView = false
+    @State private var showVastuGallery = false
+
+    @State private var backendRooms: [RoomData] = []
+    @State private var selectedRoom: String? = nil // Now stores room ID instead of room name
+    @State private var showAddRoomField = false
+    @State private var newRoomName = ""
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    @State private var isLoadingRooms = false
+    @State private var properties: [PropertyData] = []
+    @State private var selectedPropertyForRoom: PropertyData? = nil
+    @State private var showPropertySelection = false
+    @State private var entranceObject: RoomData? = nil // Stores the entrance room data
     
-    // Adapter binding to convert between EntrancePhoto and UIImage arrays
-    private var capturedImagesBinding: Binding<[UIImage]> {
-        Binding<[UIImage]>(
-            get: {
-                // Convert EntrancePhoto array to UIImage array
-                return self.photoManager.entrancePhotos.map { $0.image }
-            },
-            set: { newImages in
-                // Convert UIImage array to EntrancePhoto array
-                // This will be called when CameraWithCompassView adds new images
-                let existingImages = Set(photoManager.entrancePhotos.map { $0.image })
-                
-                // Find and add only the new images
-                for image in newImages {
-                    if !existingImages.contains(image) {
-                        // Add as a new EntrancePhoto
-                        photoManager.addPhoto(image)
-                    }
-                }
-            }
-        )
+    // Photo management
+    @State private var entrancePhotos: [CapturedPhoto] = []
+    @State private var roomPhotos: [CapturedPhoto] = []
+    
+    // Property type passed from previous screen
+    let selectedPropertyType: String
+    // Property ID passed from previous screen
+    let propertyId: String
+    
+    // Services
+    private let roomService = RoomService.shared
+    private let propertyService = PropertyService.shared
+    
+    // Available property types
+    private let propertyTypes = ["residential", "commercial", "work", "other"]
+    
+    // Properties filtered by selected type
+    private var propertiesForSelectedType: [PropertyData] {
+        return properties.filter { $0.type.lowercased() == selectedPropertyType.lowercased() }
     }
     
-    // This property is no longer needed as we're using photoManager.entrancePhotos.isEmpty directly
+    // Rooms filtered by selected property type
+    private var roomsForSelectedType: [RoomData] {
+        let propertyIds = propertiesForSelectedType.map { $0.id }
+        return backendRooms.filter { propertyIds.contains($0.propertyId) }
+    }
     
-    // ...
-    // Extract photo thumbnails section to reduce complexity
-    private var photoThumbnailsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Entrance Photos")
-                .font(.headline)
-                .padding(.horizontal)
-                .padding(.top, 15)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(photoManager.entrancePhotos.indices, id: \.self) { index in
-                        EntrancePhotoThumbnailView(
-                            photo: photoManager.entrancePhotos[index],
-                            index: index,
-                            isUploading: photoManager.isUploading,
-                            onTap: {
-                                selectedPreviewImage = photoManager.entrancePhotos[index].image
-                                showingImagePopup = true
-                            },
-                            onDelete: {
-                                photoManager.deletePhoto(at: index)
-                            }
-                        )
+    // All rooms for the current property (excluding entrance rooms)
+    private var allRooms: [RoomData] {
+        // Filter rooms directly by the current property ID and exclude entrance rooms
+        return backendRooms.filter { $0.propertyId == propertyId && $0.type.lowercased() != "entrance" }
+    }
+    
+    // Room names for the current property (for checking duplicates)
+    private var allRoomNames: [String] {
+        return allRooms.map { $0.name }
+    }
+    
+    // Room creation with backend API
+    private func addRoom() {
+        let trimmedName = newRoomName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !trimmedName.isEmpty else {
+            alertMessage = "Please enter a room name"
+            showAlert = true
+            return
+        }
+        
+        guard !allRoomNames.contains(trimmedName) else {
+            alertMessage = "Room '\(trimmedName)' already exists"
+            showAlert = true
+            return
+        }
+        
+        // Use the property ID that was passed to this view
+        // No need to check for properties of selected type since we already have a valid property ID
+        
+        // Show loading state
+        isLoadingRooms = true
+        
+        // Create room in backend
+        roomService.createRoom(
+            propertyId: propertyId,
+            name: trimmedName,
+            type: "bedroom" // Default type
+        ) { result in
+            DispatchQueue.main.async {
+                self.isLoadingRooms = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success, let roomData = response.data {
+                        print("✅ Room created successfully: \(roomData.name) (ID: \(roomData.id))")
+                        
+                        // Add to backend rooms array
+                        self.backendRooms.append(roomData)
+                        
+                        // Reset form
+                        self.resetRoomForm()
+                        
+                        // Show success message
+                        self.alertMessage = "Room '\(roomData.name)' created successfully"
+                        self.showAlert = true
+                        
+                    } else {
+                        print("❌ Room creation failed: \(response.error ?? "Unknown error")")
+                        self.alertMessage = response.error ?? "Failed to create room"
+                        self.showAlert = true
                     }
                     
-                    // More button
-                    if photoManager.canAddMorePhotos {
-                        Button(action: {
-                            showCameraView = true
-                        }) {
-                            VStack {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 30))
-                                Text("More")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(Color(hex: "#4A2511"))
-                            .frame(width: 80, height: 80)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(10)
-                        }
-                        .padding(.top, -30)
-                    }
+                case .failure(let error):
+                    print("❌ Room creation error: \(error)")
+                    self.alertMessage = "Failed to create room: \(error.localizedDescription)"
+                    self.showAlert = true
                 }
-                .padding(.horizontal)
             }
         }
     }
     
-    // Extract room selection section to reduce complexity
-    private var roomSelectionSection: some View {
-        VStack(spacing: 15) {
-            Text("Room Analysis")
-                .font(.headline)
-                .padding(.horizontal)
-                .padding(.top, 20)
-            
-            // Display each room section
-            ForEach(0..<roomPhotoManager.rooms.count, id: \.self) { index in
-                RoomSelectionView(roomPhotoManager: roomPhotoManager, roomIndex: index)
-            }
-            
-            // Add Another Room button
-            if roomPhotoManager.canAddMoreRooms {
-                AddRoomView(roomPhotoManager: roomPhotoManager)
+    // Reset room form
+    private func resetRoomForm() {
+        newRoomName = ""
+        selectedPropertyForRoom = nil
+        showAddRoomField = false
+    }
+    
+    // Load rooms for the property
+    private func loadPropertiesAndRooms() {
+        isLoadingRooms = true
+        loadRoomsForProperty(propertyId: propertyId)
+    }
+    
+    // Load rooms for a specific property
+    private func loadRoomsForProperty(propertyId: String) {
+        print("🔍 Loading rooms for property ID: \(propertyId)")
+        
+        roomService.getRoomsInProperty(propertyId: propertyId) { result in
+            DispatchQueue.main.async {
+                self.isLoadingRooms = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success, let rooms = response.data {
+                        print("✅ Loaded \(rooms.count) rooms for property ID: \(propertyId)")
+                        
+                        // Find entrance room if it exists
+                        let entranceRoom = rooms.first { $0.type.lowercased() == "entrance" }
+                        
+                        // Set entranceObject if entrance room exists
+                        if let entranceRoom = entranceRoom {
+                            self.entranceObject = entranceRoom
+                            print("🚪 Found existing entrance room: \(entranceRoom.name) (ID: \(entranceRoom.id))")
+                        }
+                        
+                        // Store all rooms
+                        self.backendRooms = rooms
+                        
+                        // Print room details for debugging
+                        for room in rooms {
+                            print("Room: \(room.name), Type: \(room.type), ID: \(room.id), Property: \(room.propertyId)")
+                        }
+                        
+                        // If no rooms or no entrance room, create an entrance room
+                        if rooms.isEmpty || entranceRoom == nil {
+                            self.createEntranceRoom()
+                        }
+                    } else {
+                        print("❌ Failed to load rooms: \(response.error ?? "Unknown error")")
+                        self.alertMessage = "Failed to load rooms: \(response.error ?? "Unknown error")"
+                        self.showAlert = true
+                        
+                        // If failed to load rooms, still try to create an entrance room
+                        self.createEntranceRoom()
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Error loading rooms: \(error)")
+                    self.alertMessage = "Error loading rooms: \(error.localizedDescription)"
+                    self.showAlert = true
+                    
+                    // If failed to load rooms, still try to create an entrance room
+                    self.createEntranceRoom()
+                }
             }
         }
+    }
+    
+    // Create an entrance room if it doesn't exist
+    private func createEntranceRoom() {
+        print("🔓 Creating entrance room for property ID: \(propertyId)")
+        
+        // Show loading state
+        isLoadingRooms = true
+        
+        // Create entrance room in backend
+        roomService.createRoom(
+            propertyId: propertyId,
+            name: "Entrance",
+            type: "entrance" // Use entrance as the type
+        ) { result in
+            DispatchQueue.main.async {
+                self.isLoadingRooms = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success, let roomData = response.data {
+                        print("✅ Entrance room created successfully: \(roomData.name) (ID: \(roomData.id))")
+                        
+                        // Set as entrance object
+                        self.entranceObject = roomData
+                        
+                        // Add to backend rooms array
+                        self.backendRooms.append(roomData)
+                    } else {
+                        print("❌ Entrance room creation failed: \(response.error ?? "Unknown error")")
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Entrance room creation error: \(error)")
+                }
+            }
+        }
+    }
+    
+    // Keep this method for backward compatibility but it's not used anymore
+    private func loadRoomsForAllProperties(properties: [PropertyData]) {
+        // This method is kept for backward compatibility
+        // Now we use loadRoomsForProperty(propertyId:) instead
+        print("⚠️ loadRoomsForAllProperties is deprecated, use loadRoomsForProperty instead")
+        loadRoomsForProperty(propertyId: propertyId)
+    }
+    
+    // MARK: - Body Components
+    
+    // Header component
+    private var headerView: some View {
+        HStack {
+            Image("headerimage")
+                .frame(width: 40, height: 40)
+            
+            Spacer()
+            
+            // User profile button
+            Button(action: {
+                // Handle profile
+            }) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 24))
+                    .foregroundColor(.black)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+    }
+    
+    // Title component
+    private var titleView: some View {
+        HStack {
+            Text("Analyze your space")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+    }
+    
+    // Vastu Gallery card component
+    private var vastuGalleryCardView: some View {
+        VStack(spacing: 15) {
+            HStack {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Your Vastu Gallery")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                    
+                    Text("View and manage all your Analyzed Spaces")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    // Navigate to Vastu Gallery View
+                    showVastuGallery = true
+                }) {
+                    Text("View Library")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(Color(hex: "#DD8E2E"))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 15)
+        }
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 20)
+    }
+    
+    // Room type selection component
+    private var roomTypeSelectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Select Room Type")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.black)
+                
+                if isLoadingRooms {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
+            .padding(.top, 10)
+            
+            if allRooms.isEmpty && !isLoadingRooms {
+                Text("No rooms available. Add a room to get started.")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.vertical, 8)
+            }
+            
+            HStack {
+                Menu {
+                    if allRooms.isEmpty {
+                        Text("No rooms available")
+                    } else {
+                        ForEach(allRooms, id: \.id) { room in
+                            Button(room.name) {
+                                selectedRoom = room.id
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(selectedRoom != nil ? allRooms.first(where: { $0.id == selectedRoom })?.name ?? "Choose a room" : "Choose a room")
+                            .foregroundColor(selectedRoom == nil ? .gray : .black)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 12))
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 15)
+                    .frame(height: 36)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .disabled(allRooms.isEmpty)
+                
+                // Start Analysis button for room
+                Button(action: {
+                    // Handle room analysis
+                    if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
+                        print("Starting analysis for room: \(room.name) (ID: \(room.id))")
+                        // Open camera for the selected room
+                        showCameraView = true
+                    }
+                }) {
+                    Text("Start Analysis")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(selectedRoom != nil ? Color(hex: "#DD8E2E") : Color.gray)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(selectedRoom == nil)
+            }
+        }
+        .padding(.horizontal, 15)
+        .padding(.bottom, 15)
+    }
+    
+    // Add room form component
+    private var addRoomFormView: some View {
+        VStack(spacing: 10) {
+            // Property selection for room
+            if propertiesForSelectedType.count > 1 {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Select Property")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    
+                    Menu {
+                        ForEach(propertiesForSelectedType) { property in
+                            Button(property.name) {
+                                selectedPropertyForRoom = property
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(selectedPropertyForRoom?.name ?? "Choose \(selectedPropertyType) property")
+                                .foregroundColor(selectedPropertyForRoom == nil ? .gray : .black)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(10)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+            }
+            
+            HStack {
+                TextField("Enter room name", text: $newRoomName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .disabled(isLoadingRooms)
+                
+                Button(action: {
+                    // Cancel adding room
+                    showAddRoomField = false
+                    newRoomName = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(isLoadingRooms)
+                
+                Button(action: addRoom) {
+                    HStack {
+                        if isLoadingRooms {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .foregroundColor(.white)
+                        } else {
+                            Text("Add")
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 15)
+                    .background(isLoadingRooms ? Color.gray : Color(hex: "#D4A574"))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(isLoadingRooms || newRoomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.top, 5)
+        }
+        .padding(.horizontal, 15)
+    }
+    
+    // Add room button component
+    private var addRoomButtonView: some View {
+        
+        Group {
+            if isLoadingRooms {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading rooms...")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .padding(.horizontal, 15)
+            } else {
+                HStack(alignment: .center) {
+                    Button(action: {
+                        showAddRoomField = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14))
+                            Text("Add a Room")
+                                .font(.system(size: 14))
+                        }
+                        .foregroundColor(Color(hex: "#DD8E2E"))
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(Color.white)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(hex: "#DD8E2E"), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    Spacer()
+                }
+                .padding(.horizontal, 15)
+            }
+        }
+    }
+    
+    // Room card header component
+    private var roomCardHeaderView: some View {
+        VStack(spacing: 15) {
+            VStack {
+                HStack {
+                    Text("Analyze a Specific Room")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                }
+                
+                HStack {
+                    Text("Check the Vastu of any room, one by one.")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 15)
+            .padding(.top, 15)
+        }
+        
+    }
+   
+    // Entrance card component
+    private var entranceCardView: some View {
+        VStack(spacing: 15) {
+           
+               
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Image("property")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        
+                        .cornerRadius(15)
+                    HStack {
+                        Text("Analyze Your Main Entrance")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .padding(.leading, 15)
+                        
+                        Spacer()
+                    }
+                    
+                    HStack {
+                        Text("Unlock the energy of your home's main entry.")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.leading, 15)
+                            Spacer()
+                    }
+                    
+                    // Start Analysis button
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            // Only open camera if we have an entrance room
+                            if let entranceRoom = entranceObject {
+                                showEntranceCameraView = true
+                            } else {
+                                alertMessage = "Entrance room not found. Please try again."
+                                showAlert = true
+                            }
+                        }) {
+                            Text("Start Analysis")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 15)
+                                .background(Color(hex: "#DD8E2E"))
+                                .cornerRadius(8)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .frame(width: UIScreen.main.bounds.width / 3)
+                    }
+                    
+                }
+                .padding(.bottom, 15)
+            
+        }
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 20)
     }
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .center, spacing: 0) {
-                // Logo at the top
-                Image("headerimage")
-                    .frame(width: 78)
-                    .padding(.top, 50)
-                    .padding(.bottom, 10)
+            VStack(spacing: 20) {
+                // Header with logo
+                headerView
                 
-                VStack(alignment: .leading, spacing: 0) {
-                    // Title
-                    Text("Analyze your space")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .padding(.top, 20)
-                        .padding(.bottom, 10)
-                }
-                .padding(.horizontal)
+                // Title
+                titleView
                 
-                VStack(alignment: .center, spacing: 0) {
-                    // Property image
-                    Image("property")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                }
+                // Main Entrance Card
+                entranceCardView
                 
-                VStack(alignment: .leading, spacing: 20) {
-                    // Description text
-                    Text("Start your Vastu journey by scanning the entrance of your home to check its alignment, then select a room type to analyze and receive personalized insights.")
-                        .font(.body)
-                        .foregroundColor(.black)
-                        .padding(.horizontal)
+                // Analyze a Specific Room Card
+                VStack {
+                    roomCardHeaderView
+                   
                     
-                    // Analyze Entrance button
-                    Button(action: {
-                        showCameraView = true
-                    }) {
-                        Text("Analyze Entrance")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(10)
-                            .background(photoManager.entrancePhotos.isEmpty ? Color(hex: "#4A2511") : Color.gray)
-                            .cornerRadius(8)
-                    }
-                    .disabled(!photoManager.entrancePhotos.isEmpty)
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    .fullScreenCover(isPresented: $showCameraView) {
-                        CameraWithCompassView(capturedImages: capturedImagesBinding)
+                    // Add Room button with loading state
+                    addRoomButtonView
+                    
+                    // Add Room Form
+                    if showAddRoomField {
+                        addRoomFormView
                     }
                     
-                    // Display captured photos using extracted component
-                    if !photoManager.entrancePhotos.isEmpty {
-                        photoThumbnailsSection
-                    }
-                    
-                    // Room sections
-                    VStack(spacing: 15) {
-                        Text("Room Analysis")
-                            .font(.headline)
-                            .padding(.horizontal)
-                            .padding(.top, 20)
-                        
-                        // Display each room section
-                        ForEach(0..<roomPhotoManager.rooms.count, id: \.self) { index in
-                            RoomSelectionView(roomPhotoManager: roomPhotoManager, roomIndex: index)
-                        }
-                        
-                        // Add Another Room button
-                        if roomPhotoManager.canAddMoreRooms {
-                            AddRoomView(roomPhotoManager: roomPhotoManager)
-                        }
-                    }
+                    // Select Room Type dropdown
+                    roomTypeSelectionView
                 }
-                .padding(.bottom, 20)
+                .background(Color.white)
+                .cornerRadius(15)
+                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                .padding(.horizontal, 20)
+                
+                // Your Vastu Gallery Card
+                vastuGalleryCardView
+                
+                Spacer(minLength: 100) // Space for bottom navigation
             }
+            .padding(.bottom, 20)
         }
-        .background(Color.white.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
         .onAppear {
-            photoManager.loadPhotos()
-            roomPhotoManager.loadRooms()
+            loadPropertiesAndRooms()
         }
-        .fullScreenCover(isPresented: $showPhotoPreview, onDismiss: nil) {
-            if let image = selectedPreviewImage {
-                PhotoPreviewView(image: image)
+        // Camera for regular room analysis
+        .fullScreenCover(isPresented: $showCameraView) {
+            if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
+                RoomCameraView(
+                    roomId: room.id,
+                    roomName: room.name,
+                    maxPhotos: 4
+                )
             }
         }
-        .overlay(
-            Group {
-                if showingImagePopup, let image = selectedPreviewImage {
-                    // Use the extracted ImagePopupOverlayView component
-                    ImagePopupOverlayView(
-                        image: image,
-                        entrancePhotos: photoManager.entrancePhotos,
-                        isUploading: photoManager.isUploading,
-                        onClose: {
-                            showingImagePopup = false
-                            selectedPreviewImage = nil
-                        }
-                    )
-                }
+        // Camera for entrance room analysis
+        .fullScreenCover(isPresented: $showEntranceCameraView) {
+            if let entranceRoom = entranceObject {
+                RoomCameraView(
+                    roomId: entranceRoom.id,
+                    roomName: entranceRoom.name,
+                    maxPhotos: 4
+                )
             }
-        )
+        }
+        // Vastu Gallery view
+        .fullScreenCover(isPresented: $showVastuGallery) {
+            // Using VastuGalleryView from VastuGalleryScreen.swift
+            VastuGalleryView()
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(
+                title: Text("Room Management"),
+                message: Text(alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 }

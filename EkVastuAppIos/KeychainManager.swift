@@ -107,4 +107,68 @@ class KeychainManager {
         // Delete the item
         SecItemDelete(query as CFDictionary)
     }
+    
+    // Delete ALL user details from Keychain (for complete reset)
+    static func deleteAllUserDetails() {
+        // Create query to delete all items with our service name
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName
+        ]
+        
+        // Delete all items
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess {
+            print("✓ All user details deleted from Keychain")
+        } else if status == errSecItemNotFound {
+            print("✓ No user details found in Keychain to delete")
+        } else {
+            print("⚠️ Error deleting user details from Keychain: \(status)")
+        }
+    }
+    
+    // Check if keystore has user details for a specific deleted user
+    static func hasUserDetailsForDeletedUser(userId: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: userId,
+            kSecReturnData as String: false,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        return status == errSecSuccess
+    }
+    
+    // Delete user details for a specific user ID
+    static func deleteUserDetailsForUser(userId: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: userId
+        ]
+        
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess {
+            print("✓ User details deleted for user: \(userId)")
+        } else if status == errSecItemNotFound {
+            print("✓ No user details found for user: \(userId)")
+        } else {
+            print("⚠️ Error deleting user details for user \(userId): \(status)")
+        }
+    }
+    
+    // Check if keystore has any user details at all
+    static func hasAnyUserDetails() -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecReturnData as String: false,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        return status == errSecSuccess
+    }
 }

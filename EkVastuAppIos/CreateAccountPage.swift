@@ -13,8 +13,10 @@ struct CreateAccountPage: View {
     
     // Authentication state
     @ObservedObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var authService = AuthService.shared
     @State private var isLoading = false
     @State private var showHomeView = false
+    @State private var errorMessage: String? = nil
     
     // Validation state
     @State private var nameError: String? = nil
@@ -195,6 +197,14 @@ struct CreateAccountPage: View {
                 }
                 .padding(.horizontal)
                 
+                // Error message
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .font(.system(size: 14))
+                        .padding(.horizontal)
+                }
+                
                 // Already registered link with animation
                 HStack {
                     Text("Already Registered? ")
@@ -317,36 +327,41 @@ struct CreateAccountPage: View {
     }
     
     private func createAccount() {
+        guard formIsValid() else { return }
+        
         isLoading = true
+        errorMessage = nil
         
-        // Since we're not using password authentication anymore,
-        // we'll use the Google Sign-In method directly
-        let rootViewController = UIApplication.getRootViewController()
-        
-        // Start Google Sign-In flow
-        authManager.signInWithGoogle(presenting: rootViewController) { success in
-            if success {
-                // If Google sign-in is successful, update the user's display name
-                if let user = Auth.auth().currentUser {
-                    // Update display name
-                    let changeRequest = user.createProfileChangeRequest()
-                    changeRequest.displayName = self.name
-                    changeRequest.commitChanges { error in
-                        if let error = error {
-                            print("Error updating profile: \(error.localizedDescription)")
-                        }
+        // Use backend API for signup (automatically gets tenantId from tenant ping)
+        authService.signUp(
+            name: name,
+            email: email
+        ) { result in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success {
+                        print("✅ Backend signup successful")
+                        print("User: \(response.data?.name ?? "N/A")")
+                        print("Email: \(response.data?.email ?? "N/A")")
+                        
+                        // Set authentication state
+                        self.authManager.isAuthenticated = true
+                        
+                        // Navigate to appropriate screen
+                        self.showHomeView = true
+                    } else {
+                        self.errorMessage = response.message ?? "Signup failed"
                     }
                     
-                    // Check user status to determine which screen to show
-                    self.authManager.checkUserStatus {
-                        self.isLoading = false
-                        self.showHomeView = true
-                    }
-                } else {
-                    self.isLoading = false
+                case .failure(let error):
+                    // Extract user-friendly error message
+                    let userFriendlyMessage = self.extractUserFriendlyErrorMessage(from: error)
+                    print("❌ Backend signup failed: \(userFriendlyMessage)")
+                    self.errorMessage = userFriendlyMessage
                 }
-            } else {
-                self.isLoading = false
             }
         }
     }
@@ -358,16 +373,237 @@ struct CreateAccountPage: View {
         
         // Start Google Sign-In flow
         authManager.signInWithGoogle(presenting: rootViewController) { success in
-             print(authManager)
             if success {
-                // Check user status to determine which screen to show
-                self.authManager.checkUserStatus {
-                    self.isLoading = false
-                    self.showHomeView = true
+                // Get the Firebase ID token
+                self.authManager.user?.getIDToken { idToken, error in
+                    if let idToken = idToken {
+                        print("🔑 Got Firebase ID token, calling backend Google login...")
+                        
+                        // Call backend Google login API
+                        AuthService.shared.googleLogin(idToken: idToken) { result in
+                            DispatchQueue.main.async {
+                                self.isLoading = false
+                                
+                                switch result {
+                                case .success(let response):
+                                    print("✅ Backend Google login successful")
+                                    
+                                    // Store user data from backend response
+                                    self.storeGoogleUserDataLocally(response: response)
+                                    
+                                    // Navigate to next screen
+                                    self.showHomeView = true
+                                    
+                                case .failure(let error):
+                                    print("❌ Backend Google login failed: \(error.localizedDescription)")
+                                    
+                                    // If Google login fails, try regular signup flow
+                                    if error.localizedDescription.contains("already exists") {
+                                        self.errorMessage = "Account already exists. Please sign in instead."
+                                    } else {
+                                        self.errorMessage = "Failed to authenticate with backend. Please try again."
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            print("❌ Failed to get Firebase ID token: \(error?.localizedDescription ?? "Unknown error")")
+                            self.isLoading = false
+                            self.errorMessage = "Failed to get authentication token. Please try again."
+                        }
+                    }
                 }
             } else {
                 self.isLoading = false
+                self.errorMessage = "Google Sign-In failed. Please try again."
             }
+        }
+    }
+    
+    private func performBackendSignupAfterGoogle() {
+        // Get user info from Firebase after Google authentication
+        guard let firebaseUser = authManager.user,
+              let email = firebaseUser.email,
+              let displayName = firebaseUser.displayName else {
+            print("❌ Missing user info from Google authentication")
+            self.isLoading = false
+            self.errorMessage = "Failed to get user information from Google"
+            return
+        }
+        
+        print("🔐 Calling backend signup with Google user info:")
+        print("   - Email: \(email)")
+        print("   - Name: \(displayName)")
+        
+        // Call backend signup API with Google user info
+        AuthService.shared.signUp(
+            name: displayName,
+            email: email
+        ) { result in
+            // Process result on main thread
+            self.processSignUpResult(result: result, firebaseUser: firebaseUser)
+        }
+    }
+    
+    private func processSignUpResult(result: Result<SignUpResponse, NetworkError>, firebaseUser: User) {
+        let work = DispatchWorkItem {
+            self.isLoading = false
+            
+            switch result {
+            case .success(let response):
+                print("✅ Backend signup successful after Google authentication")
+                
+                // SignUpResponse doesn't have tokens - just proceed
+                // Tokens are only returned in SignInResponse
+                
+                // Store user data locally
+                self.storeGoogleUserDataLocally(response: response, googleUser: firebaseUser)
+                
+                // Navigate to next screen
+                self.showHomeView = true
+                
+            case .failure(let error):
+                print("❌ Backend signup failed after Google authentication: \(error)")
+                
+                // Check if user already exists, then try signin instead
+                if error.localizedDescription.contains("already exists") || 
+                   error.localizedDescription.contains("Contact with email already exists") {
+                    print("🔄 User exists, attempting signin instead...")
+                    self.performBackendSigninAfterGoogle(email: firebaseUser.email ?? "")
+                } else {
+                    self.errorMessage = self.extractUserFriendlyErrorMessage(from: error)
+                }
+            }
+        }
+        
+        DispatchQueue.main.async(execute: work)
+    }
+    
+    private func performBackendSigninAfterGoogle(email: String) {
+        // If signup fails because user exists, try signin
+        AuthService.shared.signIn(
+            userId: email,
+            password: "google_auth_placeholder" // This won't work, but we'll handle the error
+        ) { result in
+            // Process result on main thread
+            self.processSignInResult(result: result)            
+        }
+    }
+    
+    private func processSignInResult(result: Result<SignInResponse, NetworkError>) {
+        let work = DispatchWorkItem {
+            switch result {
+            case .success(let response):
+                print("✅ Backend signin successful after Google authentication")
+                
+                // Store tokens from backend response
+                TokenManager.shared.storeTokens(
+                    accessToken: response.accessToken,
+                    refreshToken: response.refreshToken
+                )
+                
+                // Navigate to next screen
+                self.showHomeView = true
+                
+            case .failure(_):
+                // If signin also fails, just proceed with Firebase auth only
+                print("ℹ️ Backend signin failed, proceeding with Firebase-only authentication")
+                self.showHomeView = true
+            }
+        }
+        
+        DispatchQueue.main.async(execute: work)
+    }
+    
+    private func storeGoogleUserDataLocally(response: GoogleLoginResponse) {
+        // Store tokens from backend response
+        TokenManager.shared.storeTokens(
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken
+        )
+        
+        // Create UserDetails object from backend response
+        let userDetails = UserDetails(
+            name: response.contact.fullName,
+            dateOfBirth: Date(), // Default value, can be updated later
+            timeOfBirth: Date(), // Default value, can be updated later
+            placeOfBirth: "" // Default value, can be updated later
+        )
+        
+        // Save to local storage
+        userDetails.saveToLocalStorage { success, error in
+            if success {
+                print("✅ Google user details saved to local storage")
+            } else {
+                print("❌ Failed to save Google user details: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }
+        
+        // Store additional user info
+        UserDefaults.standard.set(response.contact.id, forKey: "user_id")
+        UserDefaults.standard.set(response.email, forKey: "user_email")
+        UserDefaults.standard.set(response.contact.fullName, forKey: "user_name")
+        UserDefaults.standard.set(response.contact.phone ?? "", forKey: "user_phone")
+        UserDefaults.standard.set(response.role, forKey: "user_role")
+        UserDefaults.standard.set(response.contact.picture ?? "", forKey: "user_picture")
+        UserDefaults.standard.synchronize()
+    }
+    
+    private func storeGoogleUserDataLocally(response: SignUpResponse, googleUser: User) {
+        // Create UserDetails object from Google user info
+        let userDetails = UserDetails(
+            name: googleUser.displayName ?? response.data?.name ?? "User",
+            dateOfBirth: Date(), // Default value, can be updated later
+            timeOfBirth: Date(), // Default value, can be updated later
+            placeOfBirth: "" // Default value, can be updated later
+        )
+        
+        // Save to local storage
+        userDetails.saveToLocalStorage { success, error in
+            if success {
+                print("✅ Google user details saved to local storage")
+            } else {
+                print("❌ Failed to save Google user details: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }
+        
+        // Store additional user info
+        UserDefaults.standard.set(response.data?.id ?? "", forKey: "user_id")
+        UserDefaults.standard.set(response.data?.email ?? "", forKey: "user_email")
+        UserDefaults.standard.set(googleUser.displayName ?? response.data?.name ?? "", forKey: "user_name")
+        UserDefaults.standard.set(googleUser.phoneNumber ?? "", forKey: "user_phone")
+        UserDefaults.standard.set(response.data?.status ?? "", forKey: "user_role")
+        UserDefaults.standard.set(googleUser.photoURL?.absoluteString ?? "", forKey: "user_picture")
+        UserDefaults.standard.synchronize()
+    }
+    
+    // MARK: - Helper Methods
+    private func extractUserFriendlyErrorMessage(from error: NetworkError) -> String {
+        switch error {
+        case .serverError(let statusCode, let errorMessage):
+            // Try to parse the nested error structure
+            if let errorData = errorMessage?.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: errorData) as? [String: Any],
+               let errors = json["errors"] as? [String: Any],
+               let messageString = errors["message"] as? String {
+                
+                // The message itself might be a JSON string, try to parse it
+                if let messageData = messageString.data(using: .utf8),
+                   let messageJson = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],
+                   let actualMessage = messageJson["message"] as? String {
+                    return actualMessage
+                }
+                
+                // If not nested JSON, return the message string as is
+                return messageString
+            }
+            
+            // Fallback to original error message
+            return errorMessage ?? "Server error (\(statusCode))"
+            
+        default:
+            return error.localizedDescription
         }
     }
 }

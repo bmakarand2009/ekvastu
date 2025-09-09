@@ -76,7 +76,7 @@ struct AddressSearchView: View {
         let token = GMSAutocompleteSessionToken.init()
         let filter = GMSAutocompleteFilter()
         filter.type = .address
-        filter.country = "IN" // Restrict to India
+        // Remove country restriction to enable worldwide address search
         
         GMSPlacesClient.shared().findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: token) { predictions, error in
             isLoading = false

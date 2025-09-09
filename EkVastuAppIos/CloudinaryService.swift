@@ -185,14 +185,25 @@ enum CloudinaryError: Error, LocalizedError {
 @MainActor
 class CloudinaryService: ObservableObject {
     
-    // MARK: - Constants (Loaded from Config.plist)
-    private let cloudName: String
-    private let uploadPreset = "mc2bjvfu"
-    private let folder = "ekshakti"
+    // MARK: - Configuration Manager
+    private let tenantConfig = TenantConfigManager.shared
     
     // MARK: - API Credentials (Loaded from Config.plist)
     private let apiKey: String
     private let apiSecret: String
+    
+    // MARK: - Dynamic Configuration Properties
+    private var cloudName: String {
+        return tenantConfig.cloudinaryCloudName
+    }
+    
+    private var uploadPreset: String {
+        return tenantConfig.cloudinaryUploadPreset
+    }
+    
+    private var folder: String {
+        return tenantConfig.cloudinaryFolder
+    }
     
     // MARK: - Properties
     @Published var isUploading = false
@@ -204,29 +215,47 @@ class CloudinaryService: ObservableObject {
     
     // MARK: - Initialization
     init() {
-        self.cloudName = ConfigManager.cloudinaryCloudName
         self.apiKey = ConfigManager.cloudinaryAPIKey
         self.apiSecret = ConfigManager.cloudinaryAPISecret
         
-        // Validate configuration on initialization
-        if cloudName.isEmpty || apiKey.isEmpty || apiSecret.isEmpty {
-            print("⚠️ Cloudinary configuration is incomplete:")
-            print("   - Cloud Name: \(cloudName.isEmpty ? "MISSING" : "✓")")
+        // Validate static configuration on initialization
+        if apiKey.isEmpty || apiSecret.isEmpty {
+            print("⚠️ Cloudinary static configuration is incomplete:")
             print("   - API Key: \(apiKey.isEmpty ? "MISSING" : "✓")")
             print("   - API Secret: \(apiSecret.isEmpty ? "MISSING" : "✓")")
             print("   Please check your Config.plist file")
         }
+        
+        print("🔧 CloudinaryService initialized with dynamic tenant configuration")
     }
     
     // MARK: - Configuration Validation
     private func validateConfiguration() throws {
-        guard !cloudName.isEmpty && !apiKey.isEmpty && !apiSecret.isEmpty else {
+        let currentCloudName = cloudName
+        let currentUploadPreset = uploadPreset
+        let currentFolder = folder
+        
+        guard !currentCloudName.isEmpty && !apiKey.isEmpty && !apiSecret.isEmpty else {
+            print("❌ Cloudinary configuration validation failed:")
+            print("   - Cloud Name: \(currentCloudName.isEmpty ? "MISSING" : currentCloudName)")
+            print("   - Upload Preset: \(currentUploadPreset.isEmpty ? "MISSING" : currentUploadPreset)")
+            print("   - Folder: \(currentFolder.isEmpty ? "MISSING" : currentFolder)")
+            print("   - API Key: \(apiKey.isEmpty ? "MISSING" : "✓")")
+            print("   - API Secret: \(apiSecret.isEmpty ? "MISSING" : "✓")")
             throw CloudinaryError.missingConfiguration
         }
+        
+        print("✅ Cloudinary configuration validated:")
+        print("   - Cloud Name: \(currentCloudName)")
+        print("   - Upload Preset: \(currentUploadPreset)")
+        print("   - Folder: \(currentFolder)")
     }
     
     // MARK: - Upload Image
     func uploadImage(_ image: UIImage) async throws -> CloudinaryUploadResponse {
+        // Ensure tenant config is available before upload
+        await ensureTenantConfigLoaded()
+        
         try validateConfiguration()
         
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
@@ -251,6 +280,28 @@ class CloudinaryService: ObservableObject {
                 throw CloudinaryError.networkError(error)
             }
         }
+    }
+    
+    // MARK: - Ensure Tenant Config is Loaded
+    private func ensureTenantConfigLoaded() async {
+        // If tenant config is not loaded, try to load it
+        if !tenantConfig.isConfigLoaded {
+            print("⚠️ CloudinaryService: Tenant config not loaded, attempting to load...")
+            
+            do {
+                let authService = AuthService.shared
+                let _ = try await authService.getTenantInfo()
+                print("✅ CloudinaryService: Tenant config loaded successfully")
+            } catch {
+                print("❌ CloudinaryService: Failed to load tenant config: \(error.localizedDescription)")
+                print("   Will use fallback configuration")
+            }
+        } else {
+            print("✅ CloudinaryService: Tenant config already loaded")
+        }
+        
+        // Print current configuration for debugging
+        tenantConfig.printCurrentConfig()
     }
     
     // MARK: - Delete Image by Asset ID
@@ -639,6 +690,10 @@ class CloudinaryService: ObservableObject {
     
     private func createMultipartBody(imageData: Data, boundary: String, preset: String, folder: String) -> Data {
         var body = Data()
+        
+        print("📤 CloudinaryService: Creating multipart body")
+        print("   - Upload Preset: \(preset)")
+        print("   - Folder: \(folder)")
         
         // Add upload preset
         body.append("--\(boundary)\r\n".data(using: .utf8)!)

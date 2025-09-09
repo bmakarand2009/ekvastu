@@ -15,6 +15,9 @@ struct PropertyAddressListScreen: View {
     @State private var navigateToEditAddress = false
     @State private var addressToEdit: PropertyAddress?
     
+    // Property service for API calls
+    private let propertyService = PropertyService.shared
+    
     // Property type categories
     private let categories = ["Home", "Work", "Office", "Other"]
     
@@ -46,10 +49,53 @@ struct PropertyAddressListScreen: View {
                     if isLoading {
                         HStack {
                             Spacer()
-                            ProgressView()
+                            ProgressView("Loading properties...")
                                 .padding(.vertical, 20)
                             Spacer()
                         }
+                    } else if addresses.isEmpty {
+                        // No properties found message
+                        VStack(spacing: 15) {
+                            Image(systemName: "house.slash")
+                                .font(.system(size: 50))
+                                .foregroundColor(.gray)
+                            
+                            Text("No Properties Found")
+                                .font(.headline)
+                                .foregroundColor(.black)
+                            
+                            Text("You haven't added any properties yet. You can add up to 4 properties (one for each type: Residential, Work, Commercial, Other). Tap 'Add new Address' to get started.")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
+                            // Add new address button for empty state
+                            Button(action: {
+                                navigateToAddAddress = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 16))
+                                    Text("Add new Address")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color(hex: "#4A2511"))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.top, 20)
+                            
+                            Button("Refresh") {
+                                loadAddresses()
+                            }
+                            .foregroundColor(Color(hex: "#4A2511"))
+                            .padding(.top, 10)
+                        }
+                        .padding(.vertical, 40)
                     } else {
                         // Group addresses by property type
                         ForEach(categories, id: \.self) { category in
@@ -89,7 +135,7 @@ struct PropertyAddressListScreen: View {
                             }
                         }
                         
-                        // Add new address button - only show if we don't have all 4 types of addresses
+                        // Add new address button or limit message
                         if shouldShowAddButton() {
                             Button(action: {
                                 navigateToAddAddress = true
@@ -108,6 +154,31 @@ struct PropertyAddressListScreen: View {
                         }
                             .buttonStyle(PlainButtonStyle())
                             .padding(.top, 20)
+                        } else {
+                            // Show limit reached message when all 4 types are covered
+                            let existingTypes = Set(addresses.map { $0.propertyType.rawValue })
+                            if existingTypes.count >= 4 {
+                                VStack(spacing: 10) {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green)
+                                        Text("All Property Types Added")
+                                            .font(.headline)
+                                            .foregroundColor(.black)
+                                    }
+                                    
+                                    Text("You have added all 4 property types (Residential, Work, Commercial, Other). You can edit existing properties by double-tapping them.")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(10)
+                                .padding(.top, 20)
+                            }
                         }
                     }
                 }
@@ -171,7 +242,10 @@ struct PropertyAddressListScreen: View {
                 .navigationBarHidden(true)  // Also hide in child views
         }
         .fullScreenCover(isPresented: $navigateToAnalyzeScreen) {
-            AnalyzeYourProperty()
+            AnalyzeYourProperty(
+                selectedPropertyType: selectedAddress?.propertyType.rawValue.lowercased() ?? "residential",
+                propertyId: selectedAddress?.id ?? ""
+            )
                 .navigationBarHidden(true)  // Also hide in child views
         }
         .fullScreenCover(isPresented: $navigateToEditAddress, onDismiss: {
@@ -185,54 +259,93 @@ struct PropertyAddressListScreen: View {
     
     private func loadAddresses() {
         isLoading = true
-        print("Loading addresses from local storage...")
+        print("Loading addresses from backend API...")
         
-        // Use local storage instead of Firestore
-        PropertyAddress.fetchFromLocalStorage { addresses, error in
+        // Fetch properties from backend API
+        propertyService.getAllProperties { result in
             DispatchQueue.main.async {
                 self.isLoading = false
                 
-                if let error = error {
-                    print("Error loading addresses: \(error.localizedDescription)")
-                    self.alertMessage = "Error loading addresses: \(error.localizedDescription)"
-                    self.showAlert = true
-                    return
-                }
-                
-                if let addresses = addresses {
-                    print("Loaded \(addresses.count) addresses from local storage")
-                    for address in addresses {
-                        print("Address: \(address.location), Type: \(address.propertyType.rawValue), ID: \(address.id ?? "unknown")")
-                    }
-                    
-                    // Keep only the first address of each type
-                    var uniqueAddresses: [PropertyAddress] = []
-                    var seenTypes: Set<String> = []
-                    
-                    for address in addresses {
-                        let type = address.propertyType.rawValue
-                        if !seenTypes.contains(type) {
-                            uniqueAddresses.append(address)
-                            seenTypes.insert(type)
+                switch result {
+                case .success(let response):
+                    if response.success, let properties = response.data {
+                        print("Loaded \(properties.count) properties from backend")
+                        
+                        // Convert PropertyData to PropertyAddress
+                        let convertedAddresses = properties.compactMap { property in
+                            self.convertPropertyDataToAddress(property)
                         }
+                        
+                        for address in convertedAddresses {
+                            print("Address: \(address.location), Type: \(address.propertyType.rawValue), ID: \(address.id ?? "unknown")")
+                        }
+                        
+                        // Keep only the first address of each type for display
+                        var uniqueAddresses: [PropertyAddress] = []
+                        var seenTypes: Set<String> = []
+                        
+                        for address in convertedAddresses {
+                            let type = address.propertyType.rawValue
+                            if !seenTypes.contains(type) {
+                                uniqueAddresses.append(address)
+                                seenTypes.insert(type)
+                            }
+                        }
+                        
+                        self.addresses = uniqueAddresses
+                    } else {
+                        print("Failed to load properties: \(response.message ?? "Unknown error")")
+                        self.alertMessage = response.message ?? "Failed to load properties"
+                        self.showAlert = true
+                        self.addresses = []
                     }
                     
-                    self.addresses = uniqueAddresses
-                } else {
-                    print("No addresses returned from local storage")
+                case .failure(let error):
+                    print("Error loading properties: \(error.localizedDescription)")
+                    self.alertMessage = "Error loading properties: \(error.localizedDescription)"
+                    self.showAlert = true
                     self.addresses = []
                 }
             }
         }
     }
     
+    // Helper function to convert PropertyData to PropertyAddress
+    private func convertPropertyDataToAddress(_ property: PropertyData) -> PropertyAddress? {
+        // Map property type to PropertyAddress.PropertyType
+        let propertyType: PropertyAddress.PropertyType
+        switch property.type.lowercased() {
+        case "home", "residential":
+            propertyType = .home
+        case "work":
+            propertyType = .work
+        case "office", "commercial":
+            propertyType = .office
+        default:
+            propertyType = .other
+        }
+        
+        // Create complete address from property fields
+        let completeAddress = "\(property.street), \(property.city), \(property.state) \(property.zip), \(property.country)"
+        
+        return PropertyAddress(
+            location: property.name,
+            completeAddress: completeAddress,
+            pincode: property.zip,
+            propertyType: propertyType,
+            latitude: nil, // Will be geocoded if needed
+            longitude: nil, // Will be geocoded if needed
+            id: property.id
+        )
+    }
+    
     // Check if we should show the Add New Address button
     private func shouldShowAddButton() -> Bool {
-        // Count how many different property types we have
+        // Show button only if we don't have all 4 property types
         let existingTypes = Set(addresses.map { $0.propertyType.rawValue })
-        
-        // If we have all 4 types, don't show the button
-        return existingTypes.count < 4
+        let shouldShow = existingTypes.count < 4
+        print("🔘 Add button visibility: \(shouldShow) (existing types: \(existingTypes.count)/4)")
+        return shouldShow
     }
     
     // Handle address click with double-click detection

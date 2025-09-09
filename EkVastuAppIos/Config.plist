@@ -2,12 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  
-        <key>CLOUDINARY_API_KEY</key>
-           <string>858356718869728</string>
-           <key>CLOUDINARY_API_SECRET</key>
-           <string>45Mu3_EkcUc_8locfCCFaWzH1JU</string>
-           <key>CLOUDINARY_CLOUD_NAME</key>
-           <string>wajooba</string>
-        </dict>
-        </plist>
+	<key>CLOUDINARY_API_KEY</key>
+	<string>598138811992789</string>
+	<key>CLOUDINARY_API_SECRET</key>
+	<string>FY9dJe7wrcfOtXHOgizhjABHTrw</string>
+	<key>CLOUDINARY_CLOUD_NAME</key>
+	<string>dy1q4oxdv</string>
+</dict>
+</plist>

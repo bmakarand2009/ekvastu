@@ -11,7 +11,7 @@ struct PropertyAddressScreen: View {
     @State private var completeAddress = ""
     @State private var pincode = ""
     @State private var propertyType: PropertyAddress.PropertyType = .home
-    @State private var mapCenter = CLLocationCoordinate2D(latitude: 20.5937, longitude: 78.9629) // Default to India
+    @State private var mapCenter = CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795) // Default to center of world (USA center)
     @State private var mapMarker: CLLocationCoordinate2D?
     @State private var isLoading = false
     @State private var showAlert = false
@@ -24,6 +24,9 @@ struct PropertyAddressScreen: View {
     @State private var showSuggestions = false
     @State private var placesClient = GMSPlacesClient.shared()
     @Environment(\.presentationMode) var presentationMode
+    
+    // Property service for API calls
+    private let propertyService = PropertyService.shared
     
     init(addressToEdit: PropertyAddress? = nil) {
         self.addressToEdit = addressToEdit
@@ -284,7 +287,7 @@ struct PropertyAddressScreen: View {
         let token = GMSAutocompleteSessionToken.init()
         let filter = GMSAutocompleteFilter()
         filter.type = .address
-        filter.country = "IN" // Restrict to India
+        // Remove country restriction to enable worldwide address search
         
         placesClient.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: token) { predictions, error in
             if let error = error {
@@ -375,64 +378,243 @@ struct PropertyAddressScreen: View {
             return
         }
         
-        // Create or update the property address object
-        var propertyAddress: PropertyAddress
-        
-        if isEditMode, let existingAddress = addressToEdit {
-            // Update existing address
-            propertyAddress = PropertyAddress(
-                location: location,
-                completeAddress: completeAddress,
-                pincode: pincode,
-                propertyType: propertyType
-            )
-            // Preserve the original ID
-            propertyAddress.id = existingAddress.id
-        } else {
-            // Create new address
-            propertyAddress = PropertyAddress(
-                location: location,
-                completeAddress: completeAddress,
-                pincode: pincode,
-                propertyType: propertyType
-            )
-        }
-        
-        // Update coordinates
-        if let coordinate = mapMarker {
-            propertyAddress.latitude = coordinate.latitude
-            propertyAddress.longitude = coordinate.longitude
-        }
-        
         // Show loading indicator
         isLoading = true
         
-        // Save the address
-        DispatchQueue.global(qos: .userInitiated).async {
-            print("\(isEditMode ? "Updating" : "Saving") property address of type: \(propertyType.rawValue) to local storage")
+        if isEditMode, let existingAddress = addressToEdit, let propertyId = existingAddress.id {
+            // Update existing property via API
+            updatePropertyViaAPI(propertyId: propertyId)
+        } else {
+            // Create new property via API
+            createPropertyViaAPI()
+        }
+    }
+    
+    private func createPropertyViaAPI() {
+        print("🆕 Creating new property via API...")
+        
+        // First, check if a property of this type already exists
+        checkForExistingPropertyType { typeExists in
+            if typeExists {
+                // Show error message for duplicate type
+                let typeName = self.getPropertyTypeName(self.propertyType)
+                self.alertMessage = "\(typeName) property already exists. You can only have one property per type."
+                self.showAlert = true
+                self.isLoading = false
+                return
+            }
             
-            propertyAddress.saveToLocalStorage { success, error in
-                DispatchQueue.main.async {
-                    self.isLoading = false
-                    
-                    if success {
-                        print("Successfully \(self.isEditMode ? "updated" : "saved") property address to local storage")
-                        // Navigate back to the list screen
-                        self.navigateToAddressList = true
-                    } else if let error = error {
-                        print("Error \(self.isEditMode ? "updating" : "saving") property address to local storage: \(error.localizedDescription)")
-                        self.alertMessage = "Error \(self.isEditMode ? "updating" : "saving") address: \(error.localizedDescription)"
-                        self.showAlert = true
+            // Proceed with property creation if type doesn't exist
+            self.proceedWithPropertyCreation()
+        }
+    }
+    
+    private func checkForExistingPropertyType(completion: @escaping (Bool) -> Void) {
+        print("🔍 Checking for existing properties of type: \(propertyType.rawValue)")
+        
+        propertyService.getAllProperties { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    if response.success, let properties = response.data {
+                        // Map property type to API format for comparison
+                        let apiPropertyType = self.mapPropertyTypeToAPI(self.propertyType)
+                        
+                        // Check if any existing property has the same type
+                        let typeExists = properties.contains { property in
+                            property.type.lowercased() == apiPropertyType.lowercased()
+                        }
+                        
+                        print("🔍 Type '\(apiPropertyType)' exists: \(typeExists)")
+                        completion(typeExists)
+                    } else {
+                        // If we can't fetch properties, allow creation (fail-safe)
+                        print("⚠️ Could not fetch properties, allowing creation")
+                        completion(false)
                     }
+                    
+                case .failure(let error):
+                    print("❌ Error checking existing properties: \(error.localizedDescription)")
+                    // If we can't fetch properties, allow creation (fail-safe)
+                    completion(false)
                 }
             }
         }
     }
-}
-
-struct PropertyAddressScreen_Previews: PreviewProvider {
-    static var previews: some View {
-        PropertyAddressScreen()
-            .environmentObject(AuthenticationManager.shared)
+    
+    private func proceedWithPropertyCreation() {
+        print("✅ Proceeding with property creation...")
+        
+        // Parse complete address to extract components
+        let addressComponents = parseCompleteAddress(completeAddress)
+        
+        // Map property type to API format
+        let apiPropertyType = mapPropertyTypeToAPI(propertyType)
+        
+        propertyService.createProperty(
+            name: location,
+            type: apiPropertyType,
+            street: addressComponents.street,
+            city: addressComponents.city,
+            state: addressComponents.state,
+            zip: pincode,
+            country: addressComponents.country
+        ) { result in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success {
+                        print("✅ Property created successfully via API")
+                        // Navigate back to the list screen
+                        self.navigateToAddressList = true
+                    } else {
+                        self.alertMessage = response.message ?? "Failed to create property"
+                        self.showAlert = true
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Failed to create property: \(error.localizedDescription)")
+                    self.alertMessage = "Failed to create property: \(error.localizedDescription)"
+                    self.showAlert = true
+                }
+            }
+        }
+    }
+    
+    // Helper function to get user-friendly property type name
+    private func getPropertyTypeName(_ type: PropertyAddress.PropertyType) -> String {
+        switch type {
+        case .home:
+            return "Residential"
+        case .work:
+            return "Work"
+        case .office:
+            return "Commercial"
+        case .other:
+            return "Other"
+        }
+    }
+    
+    private func updatePropertyViaAPI(propertyId: String) {
+        print("✏️ Updating property via API...")
+        
+        // Check if property type has changed and if the new type already exists
+        if let existingAddress = addressToEdit {
+            let currentApiType = mapPropertyTypeToAPI(existingAddress.propertyType)
+            let newApiType = mapPropertyTypeToAPI(propertyType)
+            
+            // If type has changed, check if new type already exists
+            if currentApiType.lowercased() != newApiType.lowercased() {
+                checkForExistingPropertyType { typeExists in
+                    if typeExists {
+                        // Show error message for duplicate type
+                        let typeName = self.getPropertyTypeName(self.propertyType)
+                        self.alertMessage = "\(typeName) property already exists. You can only have one property per type."
+                        self.showAlert = true
+                        self.isLoading = false
+                        return
+                    }
+                    
+                    // Proceed with update if new type doesn't exist
+                    self.proceedWithPropertyUpdate(propertyId: propertyId)
+                }
+                return
+            }
+        }
+        
+        // If type hasn't changed or no existing address, proceed with update
+        proceedWithPropertyUpdate(propertyId: propertyId)
+    }
+    
+    private func proceedWithPropertyUpdate(propertyId: String) {
+        print("✅ Proceeding with property update...")
+        
+        // Parse complete address to extract components
+        let addressComponents = parseCompleteAddress(completeAddress)
+        
+        // Map property type to API format
+        let apiPropertyType = mapPropertyTypeToAPI(propertyType)
+        
+        propertyService.updateProperty(
+            id: propertyId,
+            name: location,
+            type: apiPropertyType,
+            street: addressComponents.street,
+            city: addressComponents.city,
+            state: addressComponents.state,
+            zip: pincode,
+            country: addressComponents.country
+        ) { result in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                switch result {
+                case .success(let response):
+                    if response.success {
+                        print("✅ Property updated successfully via API")
+                        // Navigate back to the list screen
+                        self.navigateToAddressList = true
+                    } else {
+                        self.alertMessage = response.message ?? "Failed to update property"
+                        self.showAlert = true
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Failed to update property: \(error.localizedDescription)")
+                    self.alertMessage = "Failed to update property: \(error.localizedDescription)"
+                    self.showAlert = true
+                }
+            }
+        }
+    }
+    
+    // Helper function to parse complete address into components
+    private func parseCompleteAddress(_ address: String) -> (street: String, city: String, state: String, country: String) {
+        let components = address.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        
+        // Default values
+        var street = ""
+        var city = ""
+        var state = ""
+        var country = "India" // Default country
+        
+        if components.count >= 1 {
+            street = components[0]
+        }
+        if components.count >= 2 {
+            city = components[1]
+        }
+        if components.count >= 3 {
+            state = components[2]
+        }
+        if components.count >= 4 {
+            country = components[3]
+        }
+        
+        // If we don't have enough components, try to extract from the full address
+        if city.isEmpty && !street.isEmpty {
+            city = "Unknown City"
+        }
+        if state.isEmpty && !city.isEmpty {
+            state = "Unknown State"
+        }
+        
+        return (street: street, city: city, state: state, country: country)
+    }
+    
+    // Helper function to map PropertyType to API format
+    private func mapPropertyTypeToAPI(_ type: PropertyAddress.PropertyType) -> String {
+        switch type {
+        case .home:
+            return "residential"
+        case .work:
+            return "work"
+        case .office:
+            return "commercial"
+        case .other:
+            return "other"
+        }
     }
 }

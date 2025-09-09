@@ -2,10 +2,13 @@ import SwiftUI
 
 struct AnalyzeYourProperty: View {
     @State private var selectedTab = 0
+    @State private var didSetInitialTab = false
+    let selectedPropertyType: String
+    let propertyId: String
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeAnalyzeView()
+            HomeAnalyzeView(selectedPropertyType: selectedPropertyType, propertyId: propertyId)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Home")
@@ -35,8 +38,16 @@ struct AnalyzeYourProperty: View {
         }
         .accentColor(Color(hex: "#4A2511"))
         .onAppear {
-            selectedTab = 0
+            // Only set initial tab once to avoid overriding external navigation
+            if !didSetInitialTab {
+                selectedTab = 0
+                didSetInitialTab = true
+            }
             setupTabBarAppearance()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SwitchToConsultTab"))) { _ in
+            // Navigate directly to Consult tab when requested
+            selectedTab = 3
         }
     }
     

@@ -1,9 +1,12 @@
 import SwiftUI
+import Firebase
+import FirebaseAuth
 
 struct SplashScreen: View {
     @State private var isActive = false
     @State private var opacity = 0.5
     @State private var scale: CGFloat = 0.8
+    @State private var isVerifyingAuth = true
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject private var authManager = AuthenticationManager.shared
     
@@ -62,23 +65,53 @@ struct SplashScreen: View {
                         self.scale = 1.0
                     }
                     
-                    // Check if user is already authenticated
-                    if authManager.isAuthenticated {
-                        // Check user status (completed details, property address, etc.)
-                        authManager.checkUserStatus {
-                            // Activate main view after checking status
+                    // Verify Firebase auth state before proceeding
+                    verifyAuthenticationState()
+                }
+            }
+        }
+    }
+    
+    private func verifyAuthenticationState() {
+        // Re-check Firebase auth state when app launches
+        if let user = Auth.auth().currentUser {
+            print("Verifying Firebase user on app launch: \(user.uid)")
+            
+            // Force reload to verify account still exists
+            user.reload { error in
+                if let error = error as NSError? {
+                    if error.code == AuthErrorCode.userNotFound.rawValue || 
+                       error.code == AuthErrorCode.userDisabled.rawValue {
+                        print("Firebase account no longer exists - clearing data")
+                        self.authManager.signOut()
+                    }
+                }
+                
+                // Check user status after verification
+                if self.authManager.isAuthenticated {
+                    self.authManager.checkUserStatus {
+                        DispatchQueue.main.async {
                             withAnimation {
                                 self.isActive = true
-                            }
-                        }
-                    } else {
-                        // Show onboarding after splash
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            withAnimation {
-                                self.isActive = true
+                                self.isVerifyingAuth = false
                             }
                         }
                     }
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation {
+                            self.isActive = true
+                            self.isVerifyingAuth = false
+                        }
+                    }
+                }
+            }
+        } else {
+            // No Firebase user, proceed normally
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation {
+                    self.isActive = true
+                    self.isVerifyingAuth = false
                 }
             }
         }
