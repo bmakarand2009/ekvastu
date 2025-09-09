@@ -206,7 +206,7 @@ struct VastuGalleryView: View {
                         .font(.headline)
                     
                     if !room.photos.isEmpty && room.type.lowercased() == "entrance" {
-                        NavigationLink(destination: GalleryRoomDetailView(room: room)) {
+                        NavigationLink(destination: VastuAnalysisView(room: room)) {
                             Text("View Analysis")
                                 .font(.subheadline)
                                 .foregroundColor(Color(hex: "#DD8E2E"))
