@@ -14,6 +14,7 @@ struct PropertyAddressListScreen: View {
     @State private var lastClickTime: Date?
     @State private var navigateToEditAddress = false
     @State private var addressToEdit: PropertyAddress?
+    @State private var navigateToUserDetailsForm = false
     
     // Property service for API calls
     private let propertyService = PropertyService.shared
@@ -32,11 +33,32 @@ struct PropertyAddressListScreen: View {
             .ignoresSafeArea()
             // Main content
             VStack(alignment: .center, spacing: 0) {
-                // Logo at the top
-                Image("headerimage")
-                    .frame(width: 78)
-                    .padding(.top, 50)
-                    .padding(.bottom, 10)
+                // Header with back button and logo
+                HStack {
+                    Button(action: {
+                        navigateToUserDetailsForm = true
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(hex: "#4A2511"))
+                    }
+                    .padding(.leading, 20)
+                    
+                    Spacer()
+                    
+                    Image("headerimage")
+                        .frame(width: 78)
+                    
+                    Spacer()
+                    
+                    // Empty view for balance
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20))
+                        .foregroundColor(.clear)
+                        .padding(.trailing, 20)
+                }
+                .padding(.top, 50)
+                .padding(.bottom, 10)
                 
                 // Title
                 Text("Select property's address")
@@ -112,7 +134,19 @@ struct PropertyAddressListScreen: View {
                                 // Only show one address per category
                                 ForEach(addressToShow) { address in
                                     Button(action: {
-                                        handleAddressClick(address)
+                                        // Check for double-click first (for editing)
+                                        handleAddressDoubleClick(address)
+                                        
+                                        // If not a double-click, set as selected and navigate
+                                        selectedAddress = address
+                                        
+                                        // Add a small delay to allow double-click detection
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                            // Only navigate if we haven't started editing (double-click)
+                                            if !navigateToEditAddress {
+                                                navigateToAnalyzeScreen = true
+                                            }
+                                        }
                                     }) {
                                         ZStack(alignment: .leading) {
                                             RoundedRectangle(cornerRadius: 10)
@@ -123,11 +157,19 @@ struct PropertyAddressListScreen: View {
                                                         .stroke(selectedAddress?.id == address.id ? Color(hex: "#4A2511") : Color.clear, lineWidth: 2)
                                                 )
                                             
-                                            Text(address.completeAddress)
-                                                .font(.system(size: 15))
-                                                .foregroundColor(.black.opacity(0.7))
-                                                .padding(.horizontal, 15)
-                                                .lineLimit(2)
+                                            HStack {
+                                                Text(address.completeAddress)
+                                                    .font(.system(size: 15))
+                                                    .foregroundColor(.black.opacity(0.7))
+                                                    .lineLimit(2)
+                                                
+                                                Spacer()
+                                                
+                                                Image(systemName: "chevron.right")
+                                                    .foregroundColor(Color(hex: "#4A2511"))
+                                                    .font(.system(size: 14))
+                                            }
+                                            .padding(.horizontal, 15)
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -186,26 +228,13 @@ struct PropertyAddressListScreen: View {
                 
                 Spacer()
                 
-                // Next button at the bottom
-                Button(action: {
-                    if selectedAddress == nil {
-                        alertMessage = "Please select an address to continue"
-                        showAlert = true
-                    } else {
-                        navigateToAnalyzeScreen = true
-                    }
-                }) {
-                    Text("Next")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color(hex: "#4A2511"))
-                        .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 30)
+                // Instruction text at the bottom
+                Text("Tap on an address to analyze your property")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity)
         }
@@ -253,6 +282,10 @@ struct PropertyAddressListScreen: View {
             loadAddresses()
         }) {
             PropertyAddressScreen(addressToEdit: addressToEdit)
+                .navigationBarHidden(true)
+        }
+        .fullScreenCover(isPresented: $navigateToUserDetailsForm) {
+            UserDetailsForm(forceRefresh: true)
                 .navigationBarHidden(true)
         }
     }
@@ -348,11 +381,8 @@ struct PropertyAddressListScreen: View {
         return shouldShow
     }
     
-    // Handle address click with double-click detection
-    private func handleAddressClick(_ address: PropertyAddress) {
-        // Set as selected address (for single click)
-        selectedAddress = address
-        
+    // Handle double-click detection for editing addresses
+    private func handleAddressDoubleClick(_ address: PropertyAddress) {
         let now = Date()
         
         // Check if this is a double click (same address clicked twice within 0.5 seconds)

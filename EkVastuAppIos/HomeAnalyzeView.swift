@@ -4,6 +4,7 @@ struct HomeAnalyzeView: View {
     @State private var showCameraView = false
     @State private var showEntranceCameraView = false
     @State private var showVastuGallery = false
+    @State private var navigateToPropertyAddressList = false
 
     @State private var backendRooms: [RoomData] = []
     @State private var selectedRoom: String? = nil // Now stores room ID instead of room name
@@ -237,6 +238,18 @@ struct HomeAnalyzeView: View {
     // Header component
     private var headerView: some View {
         HStack {
+            // Back button
+            Button(action: {
+                navigateToPropertyAddressList = true
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(hex: "#4A2511"))
+            }
+            
+            Spacer()
+            
+            // Centered logo
             Image("headerimage")
                 .frame(width: 40, height: 40)
             
@@ -272,7 +285,7 @@ struct HomeAnalyzeView: View {
         VStack(spacing: 15) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Your Vastu Gallery")
+                    Text("Vastu Gallery")
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.black)
@@ -288,7 +301,7 @@ struct HomeAnalyzeView: View {
                     // Navigate to Vastu Gallery View
                     showVastuGallery = true
                 }) {
-                    Text("View Library")
+                    Text("View Property")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.vertical, 8)
@@ -701,6 +714,11 @@ struct HomeAnalyzeView: View {
         .fullScreenCover(isPresented: $showVastuGallery) {
             // Using VastuGalleryView from VastuGalleryScreen.swift
             VastuGalleryView()
+        }
+        // Navigation to PropertyAddressListScreen
+        .fullScreenCover(isPresented: $navigateToPropertyAddressList) {
+            PropertyAddressListScreen()
+                .navigationBarHidden(true)
         }
         .alert(isPresented: $showAlert) {
             Alert(

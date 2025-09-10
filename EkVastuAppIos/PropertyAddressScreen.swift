@@ -64,7 +64,7 @@ struct PropertyAddressScreen: View {
                         Button(action: {
                             presentationMode.wrappedValue.dismiss()
                         }) {
-                            Image(systemName: "arrow.left")
+                            Image(systemName: "chevron.left")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(Color(hex: "#4A2511"))
                         }

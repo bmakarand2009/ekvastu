@@ -114,7 +114,7 @@ struct VastuAnalysisView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .center) {
-                        Text("Your Vastu Gallery")
+                        Text("Vastu Gallery")
                             .font(.headline)
                             .fontWeight(.bold)
                             .foregroundColor(.black)
@@ -125,7 +125,7 @@ struct VastuAnalysisView: View {
                             // Navigate to Vastu Gallery View
                             presentationMode.wrappedValue.dismiss()
                         }) {
-                            Text("View Library")
+                            Text("View Property")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(.vertical, 8)
@@ -137,7 +137,7 @@ struct VastuAnalysisView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                     
-                    Text("View and manage all your Analyzed Spaces")
+                    Text("View Property Images")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }

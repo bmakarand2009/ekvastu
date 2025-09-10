@@ -4,6 +4,8 @@ import UserNotifications
 import FirebaseAuth
 
 struct UserDetailsForm: View {
+    // Force refresh parameter to ensure profile API is called when navigating back
+    var forceRefresh: Bool = false
     @EnvironmentObject var authManager: AuthenticationManager
     @ObservedObject private var profileManager = ProfileManager.shared
     @State private var name: String = ""
@@ -23,6 +25,7 @@ struct UserDetailsForm: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var navigateToPropertyAddressList = false
+    @State private var navigateToOnboarding = false
     
     // Profile states
     @State private var showProfileMessage = false
@@ -69,13 +72,27 @@ struct UserDetailsForm: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 20) {
-                    // Logo and header
+                    // Logo and header with logout button
                     HStack {
-                       Image("headerimage")
-                        .frame(width: 78)
+                        Spacer()
+                        
+                        Image("headerimage")
+                            .frame(width: 78)
+                            .padding(.top, 30)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            // Show confirmation alert before logout
+                            alertMessage = "Are you sure you want to logout?"
+                            showAlert = true
+                        }) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(hex: "#4A2511"))
+                        }
+                        .padding(.trailing, 20)
                         .padding(.top, 30)
-                        
-                        
                     }
                     .padding(.top, 20)
                 
@@ -274,35 +291,55 @@ struct UserDetailsForm: View {
             }
             .navigationBarHidden(true)
             .alert(isPresented: $showAlert) {
-                Alert(
-                    title: Text("Message"),
-                    message: Text(alertMessage),
-                    dismissButton: .default(Text("OK"))
-                )
+                if alertMessage == "Are you sure you want to logout?" {
+                    return Alert(
+                        title: Text("Logout"),
+                        message: Text("Are you sure you want to logout?"),
+                        primaryButton: .destructive(Text("Logout")) {
+                            // Perform logout
+                            authManager.signOut()
+                            navigateToOnboarding = true
+                        },
+                        secondaryButton: .cancel()
+                    )
+                } else {
+                    return Alert(
+                        title: Text("Message"),
+                        message: Text(alertMessage),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
             }
             .onAppear {
-                // Check profile from backend first
+                print("🔄 UserDetailsForm appeared, forceRefresh: \(forceRefresh)")
+                
+                // Always check profile from backend first
                 checkProfileStatus()
                 
                 // Load existing user details from Keychain when view appears
-                if let details = KeychainManager.loadUserDetails() {
-                    existingUserDetails = details
-                    name = details.name
-                    
-                    // Set date of birth
-                    dateOfBirth = details.dateOfBirth
-                    dateOfBirthText = dateFormatter.string(from: details.dateOfBirth)
-                    validateDateOfBirth()
-                    
-                    // Set time of birth
-                    timeOfBirth = details.timeOfBirth
-                    timeOfBirthText = timeFormatter.string(from: details.timeOfBirth)
-                    validateTimeOfBirth()
-                    
-                    // Set place of birth
-                    placeOfBirth = details.placeOfBirth
-                    validatePlaceOfBirth()
+                loadUserDetailsFromKeychain()
+                
+                // Force refresh profile data if needed
+                if forceRefresh {
+                    print("🔄 Forcing profile refresh from API")
+                    // Add a slight delay to ensure view is fully presented
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        profileManager.checkAndLoadProfile()
+                    }
                 }
+            }
+            .onReceive(profileManager.$currentProfile) { profile in
+                print("💬 Profile data received: \(profile != nil ? "yes" : "no")")
+                if let profile = profile {
+                    print("💬 Populating form with profile: \(profile.name), DOB: \(profile.dob), TOB: \(profile.timeOfBirth)")
+                    populateFormWithProfile(profile)
+                }
+            }
+            
+            // Add fullScreenCover for navigation to onboarding
+            .fullScreenCover(isPresented: $navigateToOnboarding) {
+                OnboardingView()
+                    .environmentObject(authManager)
             }
             .onChange(of: profileManager.errorMessage) { errorMessage in
                 if let errorMessage = errorMessage {
@@ -325,10 +362,39 @@ struct UserDetailsForm: View {
     // MARK: - Profile Management
     
     private func checkProfileStatus() {
+        print("🔄 Checking profile status... forceRefresh: \(forceRefresh)")
         profileManager.checkAndLoadProfile()
     }
     
+    // Load user details from Keychain
+    private func loadUserDetailsFromKeychain() {
+        if let details = KeychainManager.loadUserDetails() {
+            existingUserDetails = details
+            name = details.name
+            
+            // Set date of birth
+            dateOfBirth = details.dateOfBirth
+            dateOfBirthText = dateFormatter.string(from: details.dateOfBirth)
+            validateDateOfBirth()
+            
+            // Set time of birth
+            timeOfBirth = details.timeOfBirth
+            timeOfBirthText = timeFormatter.string(from: details.timeOfBirth)
+            validateTimeOfBirth()
+            
+            // Set place of birth
+            placeOfBirth = details.placeOfBirth
+            validatePlaceOfBirth()
+            
+            print("✅ Loaded user details from Keychain: \(details.name), DOB: \(dateOfBirthText), TOB: \(timeOfBirthText)")
+        } else {
+            print("⚠️ No user details found in Keychain")
+        }
+    }
+    
     private func populateFormWithProfile(_ profile: ProfileData) {
+        print("💬 POPULATING FORM with profile data")
+        
         // Parse and set date of birth
         let dobFormatter = DateFormatter()
         dobFormatter.dateFormat = "yyyy-MM-dd"
@@ -336,6 +402,9 @@ struct UserDetailsForm: View {
             dateOfBirth = dobDate
             dateOfBirthText = dateFormatter.string(from: dobDate)
             validateDateOfBirth()
+            print("💬 Set DOB: \(dateOfBirthText)")
+        } else {
+            print("⚠️ Failed to parse DOB: \(profile.dob)")
         }
         
         // Parse and set time of birth
@@ -345,14 +414,27 @@ struct UserDetailsForm: View {
             timeOfBirth = timeDate
             timeOfBirthText = timeFormatter.string(from: timeDate)
             validateTimeOfBirth()
+            print("💬 Set TOB: \(timeOfBirthText)")
+        } else {
+            print("⚠️ Failed to parse TOB: \(profile.timeOfBirth)")
         }
         
         // Set place of birth
         placeOfBirth = profile.placeOfBirth
         validatePlaceOfBirth()
+        print("💬 Set Place of Birth: \(placeOfBirth)")
         
         // Set name from profile
         name = profile.name
+        print("💬 Set Name: \(name)")
+        
+        // Save to keychain to ensure data persistence
+        saveToKeychain(profile: profile)
+        
+        // Update validation state to enable submit button
+        dateOfBirthValid = true
+        timeOfBirthValid = true
+        placeOfBirthValid = true
     }
     
     // Validation functions
@@ -386,6 +468,34 @@ struct UserDetailsForm: View {
     
     private func validatePlaceOfBirth() {
         placeOfBirthValid = !placeOfBirth.isEmpty
+    }
+    
+    // Save profile data to keychain for persistence
+    private func saveToKeychain(profile: ProfileData) {
+        // Create date objects from strings
+        let dobFormatter = DateFormatter()
+        dobFormatter.dateFormat = "yyyy-MM-dd"
+        
+        let timeFormatter24 = DateFormatter()
+        timeFormatter24.dateFormat = "HH:mm:ss"
+        
+        guard let dobDate = dobFormatter.date(from: profile.dob),
+              let timeDate = timeFormatter24.date(from: profile.timeOfBirth) else {
+            print("⚠️ Failed to parse dates for keychain storage")
+            return
+        }
+        
+        // Create UserDetails object
+        let userDetails = UserDetails(
+            name: profile.name,
+            dateOfBirth: dobDate,
+            timeOfBirth: timeDate,
+            placeOfBirth: profile.placeOfBirth
+        )
+        
+        // Save to keychain
+        KeychainManager.updateUserDetails(userDetails)
+        print("✅ Saved profile data to keychain")
     }
     
     private func requestNotificationPermissions() {

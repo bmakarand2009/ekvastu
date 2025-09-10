@@ -73,6 +73,23 @@ struct VastuGalleryView: View {
             .navigationBarItems(leading: backButton)
             .onAppear {
                 loadRoomsWithPhotos()
+                
+                // Set up notification observer for gallery refresh
+                NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("RefreshGallery"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    self.loadRoomsWithPhotos()
+                }
+            }
+            .onDisappear {
+                // Remove notification observer when view disappears
+                NotificationCenter.default.removeObserver(
+                    self,
+                    name: NSNotification.Name("RefreshGallery"),
+                    object: nil
+                )
             }
             .alert(isPresented: $showAlert) {
                 Alert(
@@ -169,7 +186,13 @@ struct VastuGalleryView: View {
     // Room sections
     private var roomSections: some View {
         VStack(spacing: 20) {
-            ForEach(roomsWithPhotos) { room in
+            // Display entrance rooms first
+            ForEach(roomsWithPhotos.filter { $0.type.lowercased() == "entrance" }) { room in
+                roomSection(room: room)
+            }
+            
+            // Then display all other rooms
+            ForEach(roomsWithPhotos.filter { $0.type.lowercased() != "entrance" }) { room in
                 roomSection(room: room)
             }
         }
@@ -178,58 +201,48 @@ struct VastuGalleryView: View {
     // Individual room section
     private func roomSection(room: RoomWithPhotos) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Room card with thumbnail and delete button
-            HStack {
-                // Room thumbnail
-                if let thumbnail = room.thumbnailImage {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 80, height: 80)
-                        .clipped()
-                        .cornerRadius(8)
-                } else {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 80, height: 80)
-                        .cornerRadius(8)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .font(.system(size: 30))
-                                .foregroundColor(.gray)
-                        )
-                }
-                
-                // Room info
-                VStack(alignment: .leading, spacing: 4) {
+            // Combined header and photos in a single card
+            VStack(alignment: .leading, spacing: 0) {
+                // Room header with name
+                HStack(alignment: .center) { // Ensure center alignment
                     Text(room.name)
                         .font(.headline)
+                        .padding(.leading, 20)
                     
-                    if !room.photos.isEmpty && room.type.lowercased() == "entrance" {
+                    Spacer()
+                    
+                    if room.type.lowercased() == "entrance" {
                         NavigationLink(destination: VastuAnalysisView(room: room)) {
                             Text("View Analysis")
                                 .font(.subheadline)
                                 .foregroundColor(Color(hex: "#DD8E2E"))
                         }
+                        .padding(.trailing, 20)
                     }
                 }
-                .padding(.leading, 10)
+                .padding(.vertical, 15) // Increase vertical padding
                 
-                Spacer()
-                
-                // View (eye) icon - shows photos grid on tap (for all room types)
-                NavigationLink(destination: GalleryRoomDetailView(room: room)) {
-                    Image(systemName: "eye")
-                        .foregroundColor(Color(hex: "#DD8E2E"))
-                        .padding(8)
+                // Photos grid - directly connected to the header
+                if !room.photos.isEmpty {
+                    // Load and display all photos
+                    RoomPhotosGridView(room: room)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 0) // Remove top padding
+                        .padding(.bottom, 15) // Add bottom padding
+                } else {
+                    Text("No photos available")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
-            .padding()
             .background(Color.white)
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
             .padding(.horizontal)
         }
+        .padding(.bottom, 15)
     }
     
     // Add Room button
@@ -313,7 +326,16 @@ struct VastuGalleryView: View {
                                         
                                         DispatchQueue.main.async {
                                             collectedRooms.append(roomWithPhotos)
-                                            self.roomsWithPhotos = collectedRooms.sorted(by: { $0.name < $1.name })
+                                            // Sort rooms to ensure entrance rooms appear first, then alphabetically
+                                            self.roomsWithPhotos = collectedRooms.sorted { (room1, room2) -> Bool in
+                                                if room1.type.lowercased() == "entrance" && room2.type.lowercased() != "entrance" {
+                                                    return true
+                                                } else if room1.type.lowercased() != "entrance" && room2.type.lowercased() == "entrance" {
+                                                    return false
+                                                } else {
+                                                    return room1.name < room2.name
+                                                }
+                                            }
                                         }
                                         
                                         // Load thumbnail using direct URL and update the room in-place when ready
@@ -376,14 +398,17 @@ struct VastuGalleryView: View {
     }
 }
 
-// MARK: - Entrance Photos Grid View (80x80, with delete per photo)
-struct EntrancePhotosGridView: View {
+// MARK: - Room Photos Grid View
+struct RoomPhotosGridView: View {
     let room: VastuGalleryView.RoomWithPhotos
     @State private var isLoading = true
     @State private var photos: [UIImage?] = []
     @State private var showDeleteConfirm = false
     @State private var deleteIndex: Int? = nil
     @State private var alertMessage: AlertMessage? = nil
+    @State private var selectedImage: UIImage? = nil
+    @State private var showFullScreenImage = false
+    @State private var selectedPhotoIndex: Int? = nil
     
     private let photoService = PhotoService.shared
     private let cloudinaryService = CloudinaryService()
@@ -394,58 +419,80 @@ struct EntrancePhotosGridView: View {
     }
     
     var body: some View {
-        ZStack {
-            Color(hex: "#FFF1E6").edgesIgnoringSafeArea(.all)
-            VStack {
-                if isLoading {
-                    Spacer()
-                    ProgressView()
-                    Text("Loading photos...").padding(.top, 8)
-                    Spacer()
-                } else if room.photos.isEmpty {
-                    Spacer()
-                    Text("No photos available").foregroundColor(.gray)
-                    Spacer()
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.fixed(80)), GridItem(.fixed(80)), GridItem(.fixed(80)), GridItem(.fixed(80))], spacing: 12) {
-                            ForEach(Array(room.photos.enumerated()), id: \.offset) { index, photoMeta in
-                                VStack(spacing: 6) {
+        VStack(spacing: 0) { // Remove default spacing
+            if isLoading {
+                ProgressView()
+                    .padding()
+                Text("Loading photos...")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            } else if room.photos.isEmpty {
+                Text("No photos available")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                // Photos grid with 5px spacing - left aligned
+                HStack(alignment: .center, spacing: 0) { // Change to center alignment
+                    // Left-aligned grid
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(0..<(room.photos.count + 4) / 5, id: \.self) { row in
+                            HStack(spacing: 5) {
+                                ForEach(0..<min(5, room.photos.count - row * 5), id: \.self) { col in
+                                    let index = row * 5 + col
                                     if let image = photos[safe: index] ?? nil {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 80, height: 80)
-                                            .clipped()
-                                            .cornerRadius(8)
+                                        ZStack {
+                                            NavigationLink(destination: 
+                                                PhotoFullScreenView(image: image, photoMeta: room.photos[index], onDelete: { success in
+                                                    if success {
+                                                        // Remove the photo from the list
+                                                        if index < photos.count {
+                                                            photos.remove(at: index)
+                                                            // Create a mutable copy of the photos array
+                                                            var updatedPhotos = room.photos
+                                                            updatedPhotos.remove(at: index)
+                                                            // Update the room reference with the new photos
+                                                            DispatchQueue.main.async {
+                                                                // This is a workaround since we can't modify the original room
+                                                                NotificationCenter.default.post(name: NSNotification.Name("RefreshGallery"), object: nil)
+                                                            }
+                                                        }
+                                                    }
+                                                })
+                                            ) {
+                                                Image(uiImage: image)
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                                    .frame(width: 60, height: 60)
+                                                    .clipped()
+                                                    .cornerRadius(4)
+                                            }
+                                        }
                                     } else {
                                         Rectangle()
                                             .fill(Color.gray.opacity(0.3))
-                                            .frame(width: 80, height: 80)
-                                            .cornerRadius(8)
-                                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                                    }
-                                    Button(action: { confirmDelete(index: index) }) {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.red)
+                                            .frame(width: 60, height: 60)
+                                            .cornerRadius(4)
+                                            .overlay(
+                                                Image(systemName: "photo")
+                                                    .foregroundColor(.gray)
+                                            )
                                     }
                                 }
+                                Spacer()
                             }
                         }
-                        .padding()
                     }
+                    Spacer()
                 }
+                .padding(.vertical, 5)
             }
         }
-        .navigationBarTitle("View Analysis", displayMode: .inline)
         .onAppear { loadImages() }
         .alert(item: $alertMessage) { msg in
             Alert(title: Text("Info"), message: Text(msg.text), dismissButton: .default(Text("OK")))
         }
-        .confirmationDialog("Are you sure you want to delete this photo?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) { performDelete() }
-            Button("Cancel", role: .cancel) { showDeleteConfirm = false; deleteIndex = nil }
-        }
+        // No longer using fullScreenCover as we're using NavigationLink instead
     }
     
     private func loadImages() {
@@ -470,34 +517,99 @@ struct EntrancePhotosGridView: View {
         }
         group.notify(queue: .main) { isLoading = false }
     }
+}
+
+// MARK: - Photo Full Screen View with Delete
+struct PhotoFullScreenView: View {
+    let image: UIImage
+    let photoMeta: PhotoData
+    let onDelete: (Bool) -> Void
     
-    private func confirmDelete(index: Int) {
-        deleteIndex = index
-        showDeleteConfirm = true
+    @Environment(\.presentationMode) var presentationMode
+    @State private var showDeleteConfirm = false
+    @State private var alertMessage: AlertMessage? = nil
+    
+    private let photoService = PhotoService.shared
+    private let cloudinaryService = CloudinaryService()
+    
+    struct AlertMessage: Identifiable {
+        let id = UUID()
+        let text: String
+    }
+    
+    var body: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            VStack {
+                // Top bar with delete button
+                HStack {
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showDeleteConfirm = true
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 24))
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding()
+                
+                // Image with zoom capability
+                GeometryReader { geometry in
+                    ZoomableScrollView {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: geometry.size.width)
+                    }
+                }
+            }
+        }
+        .alert(item: $alertMessage) { msg in
+            Alert(title: Text("Info"), message: Text(msg.text), dismissButton: .default(Text("OK")))
+        }
+        .confirmationDialog("Are you sure you want to delete this photo?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) { showDeleteConfirm = false }
+        }
     }
     
     private func performDelete() {
-        guard let idx = deleteIndex else { return }
         showDeleteConfirm = false
-        let photoMeta = room.photos[idx]
         Task {
             var cloudErr: String? = nil
             var apiErr: String? = nil
-            // Delete from Cloudinary using the URL directly; proceed to API only if it succeeds
+            var success = false
+            
+            // Delete from Cloudinary using the URL directly
             do {
                 _ = try await cloudinaryService.deleteWithUrl(url: photoMeta.uri)
             } catch {
                 cloudErr = error.localizedDescription
             }
+            
+            // If Cloudinary delete succeeded, delete from API
             if cloudErr == nil {
                 do {
                     _ = try await photoService.deletePhoto(id: photoMeta.id)
+                    success = true
                 } catch {
                     apiErr = error.localizedDescription
                 }
             }
+            
             DispatchQueue.main.async {
-                var parts: [String] = ["URL: \(photoMeta.uri)"]
+                var parts: [String] = []
                 if let c = cloudErr {
                     parts.append("Cloudinary delete failed: \(c)")
                     parts.append("API delete skipped due to Cloudinary failure")
@@ -506,32 +618,42 @@ struct EntrancePhotosGridView: View {
                     if let a = apiErr {
                         parts.append("API delete failed: \(a)")
                     } else {
-                        parts.append("API delete success")
+                        parts.append("Photo deleted successfully")
                     }
                 }
+                
                 self.alertMessage = AlertMessage(text: parts.joined(separator: "\n"))
+                
+                // If delete was successful, notify parent and dismiss
+                if success {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        onDelete(true)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
             }
-        }
-    }
-    
-    // Extract Cloudinary asset_id (last filename without extension) from URL
-    private func cloudinaryAssetId(from uri: String) -> String? {
-        guard let url = URL(string: uri) else { return nil }
-        let path = (url.path.removingPercentEncoding ?? url.path)
-        if let uploadRange = path.range(of: "/upload/") {
-            let after = String(path[uploadRange.upperBound...])
-            let segments = after.split(separator: "/").map(String.init)
-            if let lastSeg = segments.last {
-                let base = lastSeg.split(separator: ".").first.map(String.init) ?? lastSeg
-                return base.isEmpty ? nil : base
-            }
-            return nil
-        } else {
-            let last = url.deletingPathExtension().lastPathComponent
-            return last.isEmpty ? nil : last
         }
     }
 }
+
+// MARK: - Extensions
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCornerShape(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCornerShape: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
+// Using Array extension from ExtensionUtility.swift
 
 // MARK: - Room Detail View
 struct GalleryRoomDetailView: View {

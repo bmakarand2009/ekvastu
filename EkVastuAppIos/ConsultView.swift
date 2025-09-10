@@ -26,122 +26,29 @@ struct ConsultView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 10)
                     
-                    // Accordion sections
-                    VStack(spacing: 0) {
-                        // Section 1: Get Clarity
-                        accordionSection(
-                            index: 1,
-                            title: "Get Clarity (Initial Consultation)",
-                            icon: "message",
-                            content: {
-                                if expandedSection == 1 {
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        Text("We'll answer your questions and lay the groundwork for a personalized plan.")
-                                            .font(.subheadline)
-                                            .foregroundColor(.gray)
-                                            .padding(.bottom, 5)
-                                        
-                                        Button(action: {
-                                            expandedSection = 2
-                                        }) {
-                                            Text("Proceed to Pay")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .padding(.vertical, 10)
-                                                .padding(.horizontal, 20)
-                                                .background(Color(hex: "#DD8E2E"))
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    .padding(.horizontal, 15)
-                                    .padding(.bottom, 15)
-                                }
-                            }
-                        )
-                        
-                        Divider()
-                        
-                        // Section 2: Secure Your Session
-                        accordionSection(
-                            index: 2,
-                            title: "Secure Your Session",
-                            icon: "checkmark.shield",
-                            content: {
-                                if expandedSection == 2 {
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        Text("Pay a one-time fee to lock in your initial consultation")
-                                            .font(.subheadline)
-                                            .foregroundColor(.gray)
-                                            .padding(.bottom, 5)
-                                        
-                                        Button(action: {
-                                            expandedSection = 3
-                                        }) {
-                                            Text("Pay Now")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .padding(.vertical, 10)
-                                                .padding(.horizontal, 20)
-                                                .background(Color(hex: "#DD8E2E"))
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    .padding(.horizontal, 15)
-                                    .padding(.bottom, 15)
-                                }
-                            }
-                        )
-                        
-                        Divider()
-                        
-                        // Section 3: Pick Your Time
-                        accordionSection(
-                            index: 3,
-                            title: "Pick Your Time",
-                            icon: "clock",
-                            content: {
-                                if expandedSection == 3 {
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        Text("After you have secured your session you need to pick a date & time and connect with Jaya")
-                                            .font(.subheadline)
-                                            .foregroundColor(.gray)
-                                            .padding(.bottom, 5)
-                                        
-                                        Button(action: {
-                                            showingConfirmation = true
-                                        }) {
-                                            Text("Book Now")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .padding(.vertical, 10)
-                                                .padding(.horizontal, 20)
-                                                .background(Color(hex: "#DD8E2E"))
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    .padding(.horizontal, 15)
-                                    .padding(.bottom, 15)
-                                }
-                            }
-                        )
+                    // Coffee with Jaya button - left aligned
+                    HStack {
+                        Button(action: {
+                            showingConfirmation = true
+                        }) {
+                            Text("Coffee with Jaya")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 20)
+                                .background(Color(hex: "#DD8E2E"))
+                                .cornerRadius(8)
+                        }
+                        Spacer()
                     }
-                    .background(Color.white)
-                    .cornerRadius(15)
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                     .padding(.horizontal, 20)
                     
-                    Spacer(minLength: 80) // Space for bottom navigation
+                    
                 }
                 .padding(.vertical, 15)
             }
         }
-        .alert(isPresented: $showingConfirmation) {
-            Alert(
-                title: Text("Consultation Scheduled"),
-                message: Text("Your consultation with Jaya has been scheduled. We'll send you a confirmation email shortly."),
-                dismissButton: .default(Text("OK"))
-            )
-        }
+        
         .onAppear {
             // Start with the first section expanded
             expandedSection = 1
@@ -203,10 +110,7 @@ struct ConsultView: View {
         HStack(spacing: 15) {
             // EK Logo
             Image("headerimage")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 35)
-                .foregroundColor(Color(hex: "#DD8E2E"))
+                .frame(width: 40, height: 40)
             
             Spacer()
             
@@ -239,41 +143,5 @@ struct ConsultView: View {
         .padding(.bottom, 5)
     }
     
-    // MARK: - Accordion Section
-    private func accordionSection<Content: View>(index: Int, title: String, icon: String, @ViewBuilder content: @escaping () -> Content) -> some View {
-        VStack(spacing: 0) {
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    if expandedSection == index {
-                        // If already expanded, do nothing (keep it expanded)
-                    } else {
-                        expandedSection = index
-                    }
-                }
-            }) {
-                HStack(spacing: 15) {
-                    Image(systemName: icon)
-                        .foregroundColor(expandedSection == index ? Color(hex: "#DD8E2E") : .gray)
-                        .frame(width: 24, height: 24)
-                    
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(.black)
-                    
-                    Spacer()
-                    
-                    Image(systemName: expandedSection == index ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.gray)
-                        .font(.system(size: 14))
-                }
-                .padding(.horizontal, 15)
-                .padding(.vertical, 15)
-                .background(Color.white)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Content area
-            content()
-        }
-    }
+    
 }
