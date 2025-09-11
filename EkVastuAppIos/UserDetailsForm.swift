@@ -71,8 +71,8 @@ struct UserDetailsForm: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 20) {
-                    // Logo and header with logout button
+                VStack(spacing: 0) {
+                    // Fixed header
                     HStack {
                         Spacer()
                         
@@ -95,198 +95,213 @@ struct UserDetailsForm: View {
                         .padding(.top, 30)
                     }
                     .padding(.top, 20)
-                
-                    // Title
-                    Text("Personalized Weekly Updates")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .padding(.top, 20)
                     
-                    Text("Stay aligned with your stars—weekly on\nWhatsApp/SMS")
-                        .font(.body)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 5)
-                        .padding(.bottom, 20)
-                    
-                    // Profile status message
-                    if showProfileMessage {
-                        VStack(spacing: 10) {
-                            HStack {
-                                Image(systemName: "info.circle")
-                                    .foregroundColor(.orange)
-                                Text(profileMessage)
-                                    .font(.body)
-                                    .foregroundColor(.orange)
-                                    .multilineTextAlignment(.leading)
-                                Spacer()
+                    // Scrollable content
+                    ScrollView(showsIndicators: true) {
+                        VStack(spacing: 20) {
+                            // Title
+                            Text("Personalized Weekly Updates")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.center)
+                            
+                            Text("Stay aligned with your stars—weekly on WhatsApp/SMS")
+                                .font(.body)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 5)
+                                .padding(.bottom, 20)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            // Profile status message
+                            if showProfileMessage {
+                                VStack(spacing: 10) {
+                                    HStack {
+                                        Image(systemName: "info.circle")
+                                            .foregroundColor(.orange)
+                                        Text(profileMessage)
+                                            .font(.body)
+                                            .foregroundColor(.orange)
+                                            .multilineTextAlignment(.leading)
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.orange.opacity(0.1))
+                                    .cornerRadius(8)
+                                }
+                                .padding(.horizontal)
+                                .padding(.bottom, 10)
                             }
-                            .padding()
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(8)
+                            
+                            // Loading indicator for profile operations
+                            if profileManager.isLoading || isUpdatingProfile {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text(isUpdatingProfile ? "Updating profile..." : "Checking profile...")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.bottom, 10)
+                            }
+                            
+                            // Form fields
+                            VStack(alignment: .leading, spacing: 15) {
+                                // Date of Birth field
+                                Text("Date of Birth")
+                                    .font(.headline)
+                                
+                                Button(action: {
+                                    showDatePicker = true
+                                }) {
+                                    HStack {
+                                        Text(dateOfBirthText.isEmpty ? "Select date of birth" : dateOfBirthText)
+                                            .foregroundColor(dateOfBirthText.isEmpty ? .gray : .black)
+                                        Spacer()
+                                        Image(systemName: "calendar")
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                }.buttonStyle(.plain)
+                                
+                                if showDatePicker {
+                                    DatePicker(
+                                        "",
+                                        selection: $dateOfBirth,
+                                        displayedComponents: .date
+                                    )
+                                    .datePickerStyle(GraphicalDatePickerStyle())
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                    .onChange(of: dateOfBirth) { newValue in
+                                        dateOfBirthText = dateFormatter.string(from: newValue)
+                                        validateDateOfBirth()
+                                    }
+                                    
+                                    Button("Done") {
+                                        showDatePicker = false
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 20)
+                                    .background(Color(hex: "#4A2511"))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                }
+                                
+                                // Time of Birth field
+                                Text("Time of Birth")
+                                    .font(.headline)
+                                    .padding(.top, 10)
+                                
+                                Button(action: {
+                                    showTimePicker = true
+                                }) {
+                                    HStack {
+                                        Text(timeOfBirthText.isEmpty ? "Select time of birth" : timeOfBirthText)
+                                            .foregroundColor(timeOfBirthText.isEmpty ? .gray : .black)
+                                        Spacer()
+                                        Image(systemName: "clock")
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                }.buttonStyle(.plain)
+                                
+                                if showTimePicker {
+                                    DatePicker(
+                                        "",
+                                        selection: $timeOfBirth,
+                                        displayedComponents: .hourAndMinute
+                                    )
+                                    .datePickerStyle(WheelDatePickerStyle())
+                                    .labelsHidden()
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                    .onChange(of: timeOfBirth) { newValue in
+                                        timeOfBirthText = timeFormatter.string(from: newValue)
+                                        validateTimeOfBirth()
+                                    }
+                                    
+                                    Button("Done") {
+                                        showTimePicker = false
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 20)
+                                    .background(Color(hex: "#4A2511"))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                }
+                                
+                                // Place of Birth field
+                                Text("Place of Birth")
+                                    .font(.headline)
+                                    .padding(.top, 10)
+                                
+                                TextField("Enter place of birth", text: $placeOfBirth)
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                    .onChange(of: placeOfBirth) { newValue in
+                                        validatePlaceOfBirth()
+                                    }
+                            }
                             .padding(.horizontal)
-                        }
-                        .padding(.bottom, 10)
-                    }
-                    
-                    // Loading indicator for profile operations
-                    if profileManager.isLoading || isUpdatingProfile {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text(isUpdatingProfile ? "Updating profile..." : "Checking profile...")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.bottom, 10)
-                    }
-                    
-                    // Form fields
-                    VStack(alignment: .leading, spacing: 15) {
-                        // Date of Birth field
-                        Text("Date of Birth")
-                            .font(.headline)
-                        
-                        Button(action: {
-                            showDatePicker = true
-                        }) {
-                            HStack {
-                                Text(dateOfBirthText.isEmpty ? "Select date of birth" : dateOfBirthText)
-                                    .foregroundColor(dateOfBirthText.isEmpty ? .gray : .black)
-                                Spacer()
-                                Image(systemName: "calendar")
-                                    .foregroundColor(.gray)
+                            
+                            // Submit and Skip buttons
+                            VStack(spacing: 15) {
+                                // Submit button
+                                Button(action: submitForm) {
+                                    Text("Submit")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(isFormValid ? Color(hex: "#4A2511") : Color.gray)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!isFormValid)
+                                
+                                // Skip button
+                                Button(action: skipForm) {
+                                    Text("Skip")
+                                        .font(.headline)
+                                        .foregroundColor(isSkipButtonEnabled ? Color(hex: "#4A2511") : Color.gray)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(isSkipButtonEnabled ? Color(hex: "#4A2511") : Color.gray, lineWidth: 2)
+                                                .fill(Color.clear)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!isSkipButtonEnabled)
                             }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                        }.buttonStyle(.plain)
-                        
-                        if showDatePicker {
-                            DatePicker(
-                                "",
-                                selection: $dateOfBirth,
-                                displayedComponents: .date
-                            )
-                            .datePickerStyle(GraphicalDatePickerStyle())
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                            .onChange(of: dateOfBirth) { newValue in
-                                dateOfBirthText = dateFormatter.string(from: newValue)
-                                validateDateOfBirth()
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                            
+                            NavigationLink(destination: PropertyAddressListScreen(), isActive: $navigateToPropertyAddressList) {
+                                EmptyView()
                             }
                             
-                            Button("Done") {
-                                showDatePicker = false
-                            }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 20)
-                            .background(Color(hex: "#4A2511"))
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+                            // Add padding at the bottom to ensure content doesn't get cut off
+                            Spacer().frame(height: 50)
                         }
-                        
-                        // Time of Birth field
-                        Text("Time of Birth")
-                            .font(.headline)
-                            .padding(.top, 10)
-                        
-                        Button(action: {
-                            showTimePicker = true
-                        }) {
-                            HStack {
-                                Text(timeOfBirthText.isEmpty ? "Select time of birth" : timeOfBirthText)
-                                    .foregroundColor(timeOfBirthText.isEmpty ? .gray : .black)
-                                Spacer()
-                                Image(systemName: "clock")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                        }.buttonStyle(.plain)
-                        
-                        if showTimePicker {
-                            DatePicker(
-                                "",
-                                selection: $timeOfBirth,
-                                displayedComponents: .hourAndMinute
-                            )
-                            .datePickerStyle(WheelDatePickerStyle())
-                            .labelsHidden()
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                            .onChange(of: timeOfBirth) { newValue in
-                                timeOfBirthText = timeFormatter.string(from: newValue)
-                                validateTimeOfBirth()
-                            }
-                            
-                            Button("Done") {
-                                showTimePicker = false
-                            }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 20)
-                            .background(Color(hex: "#4A2511"))
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                        }
-                        
-                        // Place of Birth field
-                        Text("Place of Birth")
-                            .font(.headline)
-                            .padding(.top, 10)
-                        
-                        TextField("Enter place of birth", text: $placeOfBirth)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                            .onChange(of: placeOfBirth) { newValue in
-                                validatePlaceOfBirth()
-                            }
                     }
-                    .padding(.horizontal)
-                    
-                    // Submit and Skip buttons
-                    VStack(spacing: 15) {
-                        // Submit button
-                        Button(action: submitForm) {
-                            Text("Submit")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(isFormValid ? Color(hex: "#4A2511") : Color.gray)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!isFormValid)
-                        
-                        // Skip button
-                        Button(action: skipForm) {
-                            Text("Skip")
-                                .font(.headline)
-                                .foregroundColor(isSkipButtonEnabled ? Color(hex: "#4A2511") : Color.gray)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isSkipButtonEnabled ? Color(hex: "#4A2511") : Color.gray, lineWidth: 2)
-                                        .fill(Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!isSkipButtonEnabled)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 20)
-                    
-                    
-                    NavigationLink(destination: PropertyAddressListScreen(), isActive: $navigateToPropertyAddressList) {
-                        EmptyView()
-                    }
+                    .padding(.top, 10)
                 }
             }
             .navigationBarHidden(true)

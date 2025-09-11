@@ -40,10 +40,10 @@ struct CreateAccountPage: View {
                     .frame(width: 78)
                     .padding(.top, 30)
                 
-                // Welcome text
-                Text("Welcome to EkShakti")
-                    .font(.system(size: 24))
-                    .padding(.top, 10)
+                 
+                Text("Vastu by EkShakti")
+                    .font(.system(size: 22, weight: .bold))
+                    .padding(.top, 20)
                 
                 Text("Create your account to begin your Vastu journey")
                     .font(.system(size: 16))

@@ -240,4 +240,75 @@ class NetworkService: ObservableObject {
     ) -> AnyPublisher<T, NetworkError> {
         return request(endpoint: endpoint, method: .POST, body: body, headers: headers)
     }
+    
+    // Direct URL request method
+    func request<T: Codable>(
+        url: String,
+        method: HTTPMethod = .GET,
+        headers: [String: String]? = nil,
+        body: Data? = nil,
+        responseType: T.Type
+    ) -> AnyPublisher<T, Error> {
+        guard let url = URL(string: url) else {
+            return Fail(error: NetworkError.invalidURL).eraseToAnyPublisher()
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.httpBody = body
+        
+        // Set default headers
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Add authentication header if available
+        if let authHeader = tokenManager.getAuthorizationHeader() {
+            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        }
+        
+        // Add custom headers if provided
+        headers?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        
+        print("🌐 Making \(method.rawValue) request to: \(url)")
+        
+        return session.dataTaskPublisher(for: request)
+            .tryMap { data, response -> Data in
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NetworkError.networkError(URLError(.badServerResponse))
+                }
+                
+                print("📥 Response status: \(httpResponse.statusCode)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("📥 Response data: \(responseString)")
+                }
+                
+                switch httpResponse.statusCode {
+                case 200...299:
+                    return data
+                case 401:
+                    throw NetworkError.unauthorized
+                case 400...499:
+                    let errorMessage = String(data: data, encoding: .utf8)
+                    throw NetworkError.serverError(httpResponse.statusCode, errorMessage)
+                case 500...599:
+                    let errorMessage = String(data: data, encoding: .utf8)
+                    throw NetworkError.serverError(httpResponse.statusCode, errorMessage)
+                default:
+                    let errorMessage = String(data: data, encoding: .utf8)
+                    throw NetworkError.serverError(httpResponse.statusCode, errorMessage)
+                }
+            }
+            .decode(type: T.self, decoder: JSONDecoder())
+            .mapError { error in
+                if error is DecodingError {
+                    return NetworkError.decodingError(error)
+                } else if let networkError = error as? NetworkError {
+                    return networkError
+                } else {
+                    return NetworkError.networkError(error)
+                }
+            }
+            .eraseToAnyPublisher()
+    }
 }

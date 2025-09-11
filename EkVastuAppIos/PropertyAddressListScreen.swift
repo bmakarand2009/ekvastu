@@ -60,10 +60,10 @@ struct PropertyAddressListScreen: View {
                 .padding(.top, 50)
                 .padding(.bottom, 10)
                 
-                // Title
-                Text("Select property's address")
-                    .font(.title3)
-                    .padding(.bottom, 20)
+               Text("Select property's address")
+                   .font(.system(size: 22, weight: .bold))
+                   .padding(.top, 20)
+                   .padding(.bottom, 20)
                 
                 // Content area
                 VStack(alignment: .leading, spacing: 10) {

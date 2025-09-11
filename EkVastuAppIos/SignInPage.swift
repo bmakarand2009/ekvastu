@@ -47,7 +47,7 @@ struct SignInPage: View {
                     }
                     .padding(.top, 40)
                     // Welcome text
-                    Text("Welcome to EkShakti")
+                    Text("Vastu by EkShakti")
                         .font(.system(size: 22, weight: .bold))
                         .padding(.top, 20)
                     

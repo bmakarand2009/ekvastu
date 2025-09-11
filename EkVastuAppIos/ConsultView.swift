@@ -1,9 +1,13 @@
 import SwiftUI
+import SafariServices
 
 struct ConsultView: View {
     // State variables for accordion sections
     @State private var expandedSection: Int? = nil
-    @State private var showingConfirmation = false
+    @State private var showingSafari = false
+    
+    // URL for booking with Jaya
+    private let bookingUrl = URL(string: "https://bookme.name/JayaKaramchandani/discovery-call-home-vastu-visit-online-session")!
     
     var body: some View {
         ZStack {
@@ -29,7 +33,7 @@ struct ConsultView: View {
                     // Coffee with Jaya button - left aligned
                     HStack {
                         Button(action: {
-                            showingConfirmation = true
+                            showingSafari = true
                         }) {
                             Text("Coffee with Jaya")
                                 .font(.system(size: 14, weight: .medium))
@@ -42,6 +46,9 @@ struct ConsultView: View {
                         Spacer()
                     }
                     .padding(.horizontal, 20)
+                    .sheet(isPresented: $showingSafari) {
+                        SafariView(url: bookingUrl)
+                    }
                     
                     
                 }
