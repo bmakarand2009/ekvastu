@@ -624,11 +624,14 @@ struct PhotoFullScreenView: View {
                 
                 self.alertMessage = AlertMessage(text: parts.joined(separator: "\n"))
                 
-                // If delete was successful, notify parent and dismiss
+                // If delete was successful, notify parent and dismiss after showing alert
                 if success {
+                    // Notify the parent about the deletion
+                    onDelete(true)
+                    
+                    // Dismiss after a short delay to allow the user to see the success message
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        onDelete(true)
-                        presentationMode.wrappedValue.dismiss()
+                        self.presentationMode.wrappedValue.dismiss()
                     }
                 }
             }

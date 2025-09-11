@@ -50,6 +50,8 @@ struct RoomCameraView: View {
     @State private var showingPhotoPreview = false
     @State private var selectedPhotoIndex: Int? = nil
     @State private var isCameraActive = true
+    @State private var showEvaluation = false
+    @State private var actualExistingPhotosCount: Int = 0 // Track actual count from backend
     
     // Tenant config for Cloudinary
     private let tenantConfig = TenantConfigManager.shared
@@ -66,6 +68,9 @@ struct RoomCameraView: View {
                 // Photo review screen
                 photoReviewLayer(photo: photo)
             }
+        }
+        .fullScreenCover(isPresented: $showEvaluation) {
+            EvaluationQuestionsView(roomId: roomId, roomName: roomName)
         }
         // Single alert with multiple types
         .alert(item: $alertItem) { item in
@@ -218,15 +223,15 @@ struct RoomCameraView: View {
                                         .frame(width: 60, height: 60)
                                 )
                         }
-                        .disabled(capturedPhotos.count >= (maxPhotos - existingPhotosCount))
-                        .opacity(capturedPhotos.count >= (maxPhotos - existingPhotosCount) ? 0.5 : 1)
+                        .disabled(capturedPhotos.count >= (maxPhotos - actualExistingPhotosCount))
+                        .opacity(capturedPhotos.count >= (maxPhotos - actualExistingPhotosCount) ? 0.5 : 1)
                         
                         Spacer()
                     }
                     .padding(.bottom, 30)
                     
                     // Photo count indicator
-                    Text("\(existingPhotosCount + capturedPhotos.count)/\(maxPhotos) Photos")
+                    Text("\(actualExistingPhotosCount + capturedPhotos.count)/\(maxPhotos) Photos")
                         .foregroundColor(.white)
                         .font(.caption)
                         .padding(.bottom, 10)
@@ -320,25 +325,27 @@ struct RoomCameraView: View {
                         .cornerRadius(10)
                     }
                     
-                    // Next button (only if not at max photos)
-                    if capturedPhotos.count < (maxPhotos - existingPhotosCount) {
-                        Button(action: {
-                            saveAndUploadPhoto(photo)
-                            // Return to camera to take next photo
-                            currentPhoto = nil
-                            isCameraActive = true
-                        }) {
-                            VStack {
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 24))
-                                Text("Next")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue.opacity(0.7))
-                            .cornerRadius(10)
+                    // Next button: go to Evaluation screen without saving photo
+                    Button(action: {
+                        // Stop camera session before navigating
+                        cameraService.stopSession()
+                        compassService.stopUpdates()
+                        
+                        // Close camera and navigate to evaluation
+                        isCameraActive = false
+                        currentPhoto = nil
+                        showEvaluation = true
+                    }) {
+                        VStack {
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 24))
+                            Text("Next")
+                                .font(.caption)
                         }
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.blue.opacity(0.7))
+                        .cornerRadius(10)
                     }
                 }
                 .padding(.bottom, 50)
@@ -499,6 +506,9 @@ struct RoomCameraView: View {
         compassService.startUpdates()
         cameraService.setupAndStartCaptureSession()
         
+        // Load existing photos count from backend
+        loadExistingPhotosCount()
+        
         // Set a timeout for camera initialization
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             if !self.cameraService.isCameraReady {
@@ -510,6 +520,26 @@ struct RoomCameraView: View {
         NotificationCenter.default.addObserver(forName: NSNotification.Name("CameraError"), object: nil, queue: .main) { notification in
             if let error = notification.userInfo?["error"] as? Error {
                 self.alertItem = .cameraError(message: error.localizedDescription)
+            }
+        }
+    }
+    
+    // Load existing photos count from backend
+    private func loadExistingPhotosCount() {
+        print("🔍 Loading existing photos count for room ID: \(roomId)")
+        
+        photoService.getPhotosInRoom(roomId: roomId) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    let count = response.data?.count ?? 0
+                    self.actualExistingPhotosCount = count
+                    print("✅ Loaded \(count) existing photos for room ID: \(self.roomId)")
+                case .failure(let error):
+                    print("❌ Failed to load existing photos: \(error)")
+                    // Use the passed existingPhotosCount as fallback
+                    self.actualExistingPhotosCount = self.existingPhotosCount
+                }
             }
         }
     }
@@ -605,11 +635,21 @@ struct RoomCameraView: View {
             }
             
             // Return to camera view if not at remaining slots
-            if self.capturedPhotos.count < (self.maxPhotos - self.existingPhotosCount) {
+            if self.capturedPhotos.count < (self.maxPhotos - self.actualExistingPhotosCount) {
+                // First stop the current camera session
+                self.cameraService.stopSession()
+                self.compassService.stopUpdates()
+                
+                // Reset UI state
                 self.currentPhoto = nil
                 self.isCameraActive = true
+                
+                // Restart camera session
+                self.setupCamera()
             } else {
                 // If this was the last allowed photo, dismiss the camera view
+                self.cameraService.stopSession()
+                self.compassService.stopUpdates()
                 self.presentationMode.wrappedValue.dismiss()
             }
         }

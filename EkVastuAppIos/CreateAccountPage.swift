@@ -373,35 +373,33 @@ struct CreateAccountPage: View {
         
         // Start Google Sign-In flow
         authManager.signInWithGoogle(presenting: rootViewController) { success in
-            if success {
+            if success, let user = self.authManager.user {
                 // Get the Firebase ID token
-                self.authManager.user?.getIDToken { idToken, error in
+                user.getIDToken { idToken, error in
                     if let idToken = idToken {
-                        print("🔑 Got Firebase ID token, calling backend Google login...")
+                        print("🔑 Got Firebase ID token, calling backend Google signup...")
                         
-                        // Call backend Google login API
-                        AuthService.shared.googleLogin(idToken: idToken) { result in
+                        // Call backend Google signup API
+                        AuthService.shared.googleSignUp(idToken: idToken, user: user) { result in
                             DispatchQueue.main.async {
                                 self.isLoading = false
                                 
                                 switch result {
                                 case .success(let response):
-                                    print("✅ Backend Google login successful")
+                                    print("✅ Backend Google signup successful")
                                     
-                                    // Store user data from backend response
-                                    self.storeGoogleUserDataLocally(response: response)
-                                    
-                                    // Navigate to next screen
-                                    self.showHomeView = true
+                                    // After successful signup, get tenant info and then call login
+                                    self.performGoogleLoginAfterSignup(idToken: idToken)
                                     
                                 case .failure(let error):
-                                    print("❌ Backend Google login failed: \(error.localizedDescription)")
+                                    print("❌ Backend Google signup failed: \(error.localizedDescription)")
                                     
-                                    // If Google login fails, try regular signup flow
+                                    // If signup fails because user already exists, try login directly
                                     if error.localizedDescription.contains("already exists") {
-                                        self.errorMessage = "Account already exists. Please sign in instead."
+                                        print("🔄 User already exists, trying Google login instead...")
+                                        self.performGoogleLoginAfterSignup(idToken: idToken)
                                     } else {
-                                        self.errorMessage = "Failed to authenticate with backend. Please try again."
+                                        self.errorMessage = "Failed to sign up with Google. Please try again."
                                     }
                                 }
                             }
@@ -417,6 +415,33 @@ struct CreateAccountPage: View {
             } else {
                 self.isLoading = false
                 self.errorMessage = "Google Sign-In failed. Please try again."
+            }
+        }
+    }
+    
+    private func performGoogleLoginAfterSignup(idToken: String) {
+        print("🔑 Performing Google login after signup...")
+        self.isLoading = true
+        
+        // Call backend Google login API
+        AuthService.shared.googleLogin(idToken: idToken) { result in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                switch result {
+                case .success(let response):
+                    print("✅ Backend Google login successful after signup")
+                    
+                    // Store user data from backend response
+                    self.storeGoogleUserDataLocally(response: response)
+                    
+                    // Navigate to next screen
+                    self.showHomeView = true
+                    
+                case .failure(let error):
+                    print("❌ Backend Google login failed after signup: \(error.localizedDescription)")
+                    self.errorMessage = "Failed to authenticate with backend. Please try again."
+                }
             }
         }
     }

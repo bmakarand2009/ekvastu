@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import FirebaseAuth
 
 // MARK: - Authentication Service
 class AuthService: ObservableObject {
@@ -191,6 +192,57 @@ class AuthService: ObservableObject {
         }
     }
     
+    // MARK: - Google Signup Method
+    func googleSignUp(
+        idToken: String,
+        user: FirebaseAuth.User,
+        completion: @escaping (Result<GoogleSignUpResponse, NetworkError>) -> Void
+    ) {
+        print("🔐 Starting Google signup with backend...")
+        
+        isLoading = true
+        errorMessage = nil
+        
+        // Step 1: Get tenant info to retrieve tenantId
+        getTenantInfo { [weak self] tenantResult in
+            switch tenantResult {
+            case .success(let tenantInfo):
+                print("✅ Tenant info retrieved for Google signup")
+                print("   - TenantId: \(tenantInfo.tenantId)")
+                
+                // Extract user details from Firebase User
+                let name = user.displayName?.components(separatedBy: " ").first ?? ""
+                var lastName: String? = nil
+                
+                // Try to extract last name if available
+                if let displayName = user.displayName, displayName.contains(" ") {
+                    let components = displayName.components(separatedBy: " ")
+                    if components.count > 1 {
+                        lastName = components.dropFirst().joined(separator: " ")
+                    }
+                }
+                
+                // Step 2: Call Google signup API with tenant info and user details
+                self?.performGoogleSignUp(
+                    idToken: idToken,
+                    tenantId: tenantInfo.tenantId,
+                    name: name,
+                    lastName: lastName,
+                    phone: user.phoneNumber,
+                    completion: completion
+                )
+                
+            case .failure(let error):
+                print("❌ Failed to get tenant info for Google signup: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    self?.errorMessage = "Failed to get tenant configuration"
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+    
     // MARK: - Internal Google Login Method
     private func performGoogleLogin(
         tid: String,
@@ -259,6 +311,78 @@ class AuthService: ObservableObject {
                     self?.errorMessage = nil
                     completion(.success(response))
                 }
+            }
+        )
+        .store(in: &cancellables)
+    }
+    
+    // MARK: - Internal Google Signup Method
+    private func performGoogleSignUp(
+        idToken: String,
+        tenantId: String,
+        name: String,
+        lastName: String?,
+        phone: String?,
+        completion: @escaping (Result<GoogleSignUpResponse, NetworkError>) -> Void
+    ) {
+        print("📝 Performing Google signup with backend")
+        print("   - TenantId: \(tenantId)")
+        print("   - Name: \(name)")
+        print("   - Last Name: \(lastName ?? "N/A")")
+        print("   - Phone: \(phone ?? "N/A")")
+        
+        let request = GoogleSignUpRequest(
+            idToken: idToken,
+            tenantId: tenantId,
+            name: name,
+            lastName: lastName,
+            phone: phone
+        )
+        
+        guard let requestData = try? JSONEncoder().encode(request) else {
+            print("❌ Failed to encode Google signup request")
+            DispatchQueue.main.async {
+                self.isLoading = false
+                self.errorMessage = "Failed to prepare request"
+                completion(.failure(.decodingError(NSError(domain: "EncodingError", code: 0))))
+            }
+            return
+        }
+        
+        networkService.post<GoogleSignUpResponse>(
+            endpoint: .signup,
+            body: requestData,
+            headers: nil
+        )
+        .receive(on: DispatchQueue.main)
+        .sink(
+            receiveCompletion: { [weak self] completionResult in
+                self?.isLoading = false
+                
+                switch completionResult {
+                case .finished:
+                    print("✅ Google signup request completed successfully")
+                case .failure(let error):
+                    let userFriendlyMessage = self?.extractUserFriendlyErrorMessage(from: error) ?? error.localizedDescription
+                    print("❌ Google signup failed with error: \(userFriendlyMessage)")
+                    self?.errorMessage = userFriendlyMessage
+                    completion(.failure(error))
+                }
+            },
+            receiveValue: { [weak self] (response: GoogleSignUpResponse) in
+                print("📥 Google signup response received")
+                print("Success: \(response.success)")
+                if let message = response.message {
+                    print("Message: \(message)")
+                }
+                if let userData = response.data {
+                    print("User ID: \(userData.id ?? "N/A")")
+                    print("Email: \(userData.email ?? "N/A")")
+                    print("Name: \(userData.name ?? "N/A")")
+                }
+                
+                self?.errorMessage = nil
+                completion(.success(response))
             }
         )
         .store(in: &cancellables)

@@ -704,7 +704,7 @@ struct HomeAnalyzeView: View {
             if let entranceRoom = entranceObject {
                 RoomCameraView(
                     roomId: entranceRoom.id,
-                    roomName: entranceRoom.name,
+                    roomName: entranceRoom.name == "Entrance" ? "Entrance" : entranceRoom.name,
                     maxPhotos: maxPhotosForCamera,
                     existingPhotosCount: existingPhotosForCamera
                 )
