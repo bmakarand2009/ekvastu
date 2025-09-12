@@ -75,7 +75,9 @@ struct PropertyAddressScreen: View {
                         Spacer()
                         
                         Image("headerimage")
-                            .frame(width: 78)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
                             .padding(.top, 30)
                         
                         Spacer()

@@ -77,7 +77,9 @@ struct UserDetailsForm: View {
                         Spacer()
                         
                         Image("headerimage")
-                            .frame(width: 78)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
                             .padding(.top, 30)
                         
                         Spacer()
@@ -91,6 +93,7 @@ struct UserDetailsForm: View {
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(Color(hex: "#4A2511"))
                         }
+                        .buttonStyle(.plain)
                         .padding(.trailing, 20)
                         .padding(.top, 30)
                     }

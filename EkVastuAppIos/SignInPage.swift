@@ -40,7 +40,9 @@ struct SignInPage: View {
                     // Logo and header
                     HStack {
                        Image("headerimage")
-                        .frame(width: 78)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
                         .padding(.top, 30)
                         
                         
@@ -60,7 +62,7 @@ struct SignInPage: View {
                         Text("Email")
                             .font(.headline)
                         
-                        TextField("", text: $email)
+                        TextField("Enter email", text: $email)
                             .padding()
                             .background(Color.white)
                             .cornerRadius(8)
@@ -68,6 +70,7 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
+                            .accentColor(.gray.opacity(0.0))
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .onChange(of: email) { _ in
@@ -89,7 +92,7 @@ struct SignInPage: View {
                         Text("Password")
                             .font(.headline)
                         
-                        SecureField("", text: $password)
+                        SecureField("Enter password", text: $password)
                             .padding()
                             .background(Color.white)
                             .cornerRadius(8)
@@ -97,6 +100,7 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(passwordError != nil && passwordEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
+                            .accentColor(.gray.opacity(0.0))
                             .onChange(of: password) { _ in
                                 passwordEdited = true
                                 validatePassword()
@@ -521,8 +525,10 @@ struct ForgotPasswordView: View {
                 // Logo and brand
                HStack {
                        Image("headerimage")
-                       .frame(width: 78)
-                        .padding(.top, 30)
+                       .resizable()
+                       .scaledToFit()
+                       .frame(width: 40, height: 40)
+                       .padding(.top, 30)
                         
                     }
                     .padding(.top, 40)

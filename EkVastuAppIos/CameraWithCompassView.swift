@@ -82,7 +82,7 @@ struct CameraWithCompassView: View {
                     Image("headerimage")
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 50)
+                        .frame(width: 40, height: 40)
                         .padding(.top, 20)
                     
                     // Thumbnails row if there are captured images
@@ -260,9 +260,9 @@ struct CameraWithCompassView: View {
             
             // Draw header image at the top
             if let headerImage = UIImage(named: "headerimage") {
-                let headerHeight: CGFloat = 50
-                let headerWidth = originalImage.size.width
-                let headerRect = CGRect(x: 0, y: 0, width: headerWidth, height: headerHeight)
+                let headerHeight: CGFloat = 40
+                let headerWidth: CGFloat = 40
+                let headerRect = CGRect(x: 10, y: 10, width: headerWidth, height: headerHeight)
                 headerImage.draw(in: headerRect)
             }
             

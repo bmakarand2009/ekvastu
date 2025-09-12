@@ -113,6 +113,7 @@ struct VastuScoreView: View {
                                         .background(Color(hex: "#DD8E2E"))
                                         .cornerRadius(8)
                                 }
+                                .buttonStyle(.plain)
                                 .padding(.top, 16)
                             }
                             .padding()
@@ -133,14 +134,15 @@ struct VastuScoreView: View {
                                 // Open in-app browser with Jaya's booking URL
                                 showSafari = true
                             }) {
-                                Text("Connect With Jaya")
-                                    .font(.system(size: 16, weight: .medium))
+                                Text("Book Consultation")
+                                    .font(.headline)
                                     .foregroundColor(.white)
-                                    .padding(.vertical, 16)
+                                    .padding(.vertical, 12)
                                     .frame(maxWidth: .infinity)
                                     .background(Color(hex: "#DD8E2E"))
                                     .cornerRadius(10)
                             }
+                            .buttonStyle(.plain)
                             
                             Button(action: {
                                 // Navigate to HomeAnalyzeView
@@ -158,6 +160,7 @@ struct VastuScoreView: View {
                                     )
                                     .cornerRadius(10)
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -189,8 +192,8 @@ struct VastuScoreView: View {
                 // Logo on left side
                 Image("headerimage")
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 40)
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
                 
                 Spacer()
                 
@@ -200,6 +203,7 @@ struct VastuScoreView: View {
                         .font(.system(size: 20))
                         .foregroundColor(.black)
                 }
+                .buttonStyle(.plain)
                 
                 // Profile image
                 Button(action: {}) {
@@ -209,6 +213,7 @@ struct VastuScoreView: View {
                         .frame(width: 30, height: 30)
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
                 
                 // Menu button
                 Button(action: {}) {
@@ -216,6 +221,7 @@ struct VastuScoreView: View {
                         .font(.system(size: 20))
                         .foregroundColor(.black)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.top, 10)
@@ -230,14 +236,14 @@ struct VastuScoreView: View {
                 }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(Color(hex: "#4A2511"))
                 }
+                .buttonStyle(.plain)
                 
-                // Title next to back button
-                Text("Vastu Score")
+                Text(roomName)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.black)
-                    .padding(.leading, 8) // Reduced padding between back button and title
+                    .padding(.horizontal, 20)
                 
                 Spacer()
             }
@@ -273,6 +279,7 @@ struct VastuScoreView: View {
                         .background(Color(hex: "#DD8E2E"))
                         .cornerRadius(8)
                 }
+                .buttonStyle(.plain)
                 .padding(.trailing, 20)
                 .padding(.bottom, 16)
             }

@@ -32,12 +32,19 @@ struct CreateAccountPage: View {
     
     var body: some View {
         ZStack {
-            // Main content
+            LinearGradient(
+                gradient: Gradient(colors: [Color(hex: "#F9CBA6"), Color(hex: "#FFF4EB")]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             ScrollView {
             VStack(alignment: .center, spacing: 20) {
                 // Header image
                 Image("headerimage")
-                    .frame(width: 78)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
                     .padding(.top, 30)
                 
                  
@@ -57,7 +64,7 @@ struct CreateAccountPage: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    TextField("", text: $name)
+                    TextField("Enter name", text: $name)
                         .padding()
                         .background(Color.white)
                         .cornerRadius(8)
@@ -65,6 +72,7 @@ struct CreateAccountPage: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(nameError != nil && nameEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                         )
+                        .accentColor(.gray.opacity(0.0))
                         .onChange(of: name) { _ in
                             nameEdited = true
                             validateName()
@@ -84,14 +92,15 @@ struct CreateAccountPage: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    TextField("", text: $email)
+                    TextField("Enter email", text: $email)
                         .padding()
-                        .background(Color(UIColor.systemBackground))
+                        .background(Color.white)
                         .cornerRadius(8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                         )
+                        .accentColor(.gray.opacity(0.0))
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .onChange(of: email) { _ in
@@ -242,17 +251,24 @@ struct CreateAccountPage: View {
             .ignoresSafeArea()
         )
         .navigationBarBackButtonHidden(true)
-        .navigationBarItems(leading: 
-            Button(action: {
-                // Always navigate back to onboarding page
-                showCreateAccount = false
-                // Post notification to ensure return to onboarding
-                NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
-            }) {
-                Image(systemName: "chevron.left")
-                    .foregroundColor(.primary)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    // Always navigate back to onboarding page
+                    showCreateAccount = false
+                    // Post notification to ensure return to onboarding
+                    NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
+                    
+                    // Force dismiss the current view to return to onboarding
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(Color(hex: "#4A2511"))
+                }
+                .buttonStyle(.plain)
             }
-        )
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .onDisappear {
             // Ensure we return to onboarding when this view disappears
             NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
@@ -472,7 +488,7 @@ struct CreateAccountPage: View {
     }
     
     private func processSignUpResult(result: Result<SignUpResponse, NetworkError>, firebaseUser: User) {
-        let work = DispatchWorkItem {
+        DispatchQueue.main.async {
             self.isLoading = false
             
             switch result {
@@ -501,8 +517,6 @@ struct CreateAccountPage: View {
                 }
             }
         }
-        
-        DispatchQueue.main.async(execute: work)
     }
     
     private func performBackendSigninAfterGoogle(email: String) {
@@ -517,7 +531,7 @@ struct CreateAccountPage: View {
     }
     
     private func processSignInResult(result: Result<SignInResponse, NetworkError>) {
-        let work = DispatchWorkItem {
+        DispatchQueue.main.async {
             switch result {
             case .success(let response):
                 print("✅ Backend signin successful after Google authentication")
@@ -537,16 +551,16 @@ struct CreateAccountPage: View {
                 self.showHomeView = true
             }
         }
-        
-        DispatchQueue.main.async(execute: work)
     }
     
     private func storeGoogleUserDataLocally(response: GoogleLoginResponse) {
         // Store tokens from backend response
-        TokenManager.shared.storeTokens(
-            accessToken: response.accessToken,
-            refreshToken: response.refreshToken
-        )
+        DispatchQueue.main.async {
+            TokenManager.shared.storeTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+        }
         
         // Create UserDetails object from backend response
         let userDetails = UserDetails(
@@ -632,4 +646,3 @@ struct CreateAccountPage: View {
         }
     }
 }
- 

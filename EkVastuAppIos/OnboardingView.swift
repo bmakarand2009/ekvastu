@@ -3,7 +3,7 @@ import SwiftUI
 struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var isOnboardingComplete = false
-    @State private var showCreateAccount = false
+    @State private var showSignIn = false
     
     // Initialize notification observer
     init() {
@@ -13,14 +13,14 @@ struct OnboardingView: View {
     // Set up notification observer to handle back navigation
     private func setupNotificationObserver() {
         NotificationCenter.default.addObserver(forName: Notification.Name("ReturnToOnboarding"), object: nil, queue: .main) { _ in
-            showCreateAccount = false
+            showSignIn = false
         }
     }
     
     var body: some View {
-        if showCreateAccount {
+        if showSignIn {
             NavigationView {
-                CreateAccountPage(showCreateAccount: $showCreateAccount)
+                CreateAccountPage(showCreateAccount: $showSignIn)
             }
         } else if isOnboardingComplete {
             ContentView()
@@ -63,7 +63,7 @@ struct OnboardingView: View {
                             pageIndex: 2,
                             currentPage: $currentPage,
                             isLastPage: true,
-                            onComplete: { showCreateAccount = true }
+                            onComplete: { showSignIn = true }
                         )
                         .tag(2)
                     }

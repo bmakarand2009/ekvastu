@@ -127,7 +127,7 @@ struct RoomCameraView: View {
                         Image("headerimage")
                             .resizable()
                             .scaledToFit()
-                            .frame(height: 40)
+                            .frame(width: 40, height: 40)
                         
                         Text(roomName)
                             .font(.headline)
@@ -275,7 +275,7 @@ struct RoomCameraView: View {
                     Image("headerimage")
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 40)
+                        .frame(width: 40, height: 40)
                     
                     Text(roomName)
                         .font(.headline)
@@ -674,8 +674,8 @@ struct RoomCameraView: View {
             
             // Draw header image
             if let headerImage = UIImage(named: "headerimage") {
-                let imageHeight = headerHeight - 10
-                let imageWidth = imageHeight * (headerImage.size.width / headerImage.size.height)
+                let imageHeight: CGFloat = 40
+                let imageWidth: CGFloat = 40
                 let imageRect = CGRect(x: 10, y: 5, width: imageWidth, height: imageHeight)
                 headerImage.draw(in: imageRect)
                 

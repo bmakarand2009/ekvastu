@@ -43,12 +43,15 @@ struct PropertyAddressListScreen: View {
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(Color(hex: "#4A2511"))
                     }
+                    .buttonStyle(.plain)
                     .padding(.leading, 20)
                     
                     Spacer()
                     
                     Image("headerimage")
-                        .frame(width: 78)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
                     
                     Spacer()
                     
@@ -109,7 +112,7 @@ struct PropertyAddressListScreen: View {
                                 .background(Color(hex: "#4A2511"))
                                 .cornerRadius(10)
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .buttonStyle(.plain)
                             .padding(.top, 20)
                             
                             Button("Refresh") {

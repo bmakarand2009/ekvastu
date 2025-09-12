@@ -4,7 +4,6 @@ import SafariServices
 
 struct RemediesView: View {
     @StateObject private var viewModel = RemediesViewModel()
-    @State private var selectedFilter: RemedyFilterType = .placeholder
     
     var body: some View {
         NavigationView {
@@ -25,6 +24,7 @@ struct RemediesView: View {
                             .font(.system(size: 20))
                             .foregroundColor(.black)
                     }
+                    .buttonStyle(.plain)
                     
                     Button(action: {
                         // Profile action
@@ -33,6 +33,7 @@ struct RemediesView: View {
                             .font(.system(size: 20))
                             .foregroundColor(.black)
                     }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -69,6 +70,7 @@ struct RemediesView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         .padding(.top)
+                        .buttonStyle(.plain)
                     }
                     .padding()
                     Spacer()
@@ -76,7 +78,7 @@ struct RemediesView: View {
                     // Remedies list
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 20) {
-                            ForEach(filteredRemedies) { remedy in
+                            ForEach(viewModel.remedies) { remedy in
                                 RemedyCard(remedy: remedy)
                             }
                         }
@@ -96,10 +98,7 @@ struct RemediesView: View {
         }
     }
     
-    var filteredRemedies: [Remedy] {
-        // Return all remedies since filter types are temporarily removed
-        return viewModel.remedies
-    }
+    // filteredRemedies function removed - unused
 }
 
 struct RemedyCard: View {
@@ -177,25 +176,7 @@ struct RemedyCard: View {
     }
 }
 
-struct TabBarButton: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(isSelected ? Color(hex: "#4A2511") : .gray)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(isSelected ? Color(hex: "#4A2511") : .gray)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-    }
-}
+// TabBarButton removed - unused
 
 struct RemedyDetailView: View {
     let remedy: Remedy
@@ -353,6 +334,7 @@ struct RemedyDetailView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(Color(hex: "#333333"))
                     }
+                    .buttonStyle(.plain)
                     
                     // Title label (not a button)
                     Text("Remedy Details")
@@ -386,46 +368,7 @@ struct RemedyDetailView: View {
     }
 }
 
-struct StepView: View {
-    let step: RemedyStep
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Step \(step.stepNumber)")
-                .font(.headline)
-                .foregroundColor(Color(hex: "#4A2511"))
-            
-            Text(step.description)
-                .font(.body)
-            
-            if let imageUrl = step.imageUrl, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(height: 150)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 150)
-                            .cornerRadius(8)
-                    case .failure:
-                        Image(systemName: "photo")
-                            .frame(height: 150)
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 1)
-        .padding(.horizontal)
-    }
-}
+// StepView removed - unused
 
 struct InstructionStepView: View {
     let stepNumber: Int

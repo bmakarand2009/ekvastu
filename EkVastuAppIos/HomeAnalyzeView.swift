@@ -59,6 +59,90 @@ struct HomeAnalyzeView: View {
         return allRooms.map { $0.name }
     }
     
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Header with logo
+                headerView
+                
+                // Title
+                titleView
+                
+                // Main Entrance Card
+                entranceCardView
+                
+                // Analyze a Specific Room Card
+                VStack {
+                    roomCardHeaderView
+                   
+                    // Add Room button with loading state
+                    addRoomButtonView
+                    
+                    // Add Room Form
+                    if showAddRoomField {
+                        addRoomFormView
+                    }
+                    
+                    // Select Room Type dropdown
+                    roomTypeSelectionView
+                }
+                .background(Color.white)
+                .cornerRadius(15)
+                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                .padding(.horizontal, 20)
+                
+                // Your Vastu Gallery Card
+                vastuGalleryCardView
+                
+                Spacer(minLength: 100) // Space for bottom navigation
+            }
+            .padding(.bottom, 20)
+        }
+        .navigationBarHidden(true)
+        .onAppear {
+            loadPropertiesAndRooms()
+        }
+        // Camera for regular room analysis
+        .fullScreenCover(isPresented: $showCameraView) {
+            if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
+                RoomCameraView(
+                    roomId: room.id,
+                    roomName: room.name,
+                    maxPhotos: maxPhotosForCamera,
+                    existingPhotosCount: existingPhotosForCamera
+                )
+            }
+        }
+        // Camera for entrance room analysis
+        .fullScreenCover(isPresented: $showEntranceCameraView) {
+            if let entranceRoom = entranceObject {
+                RoomCameraView(
+                    roomId: entranceRoom.id,
+                    roomName: entranceRoom.name == "Entrance" ? "Entrance" : entranceRoom.name,
+                    maxPhotos: maxPhotosForCamera,
+                    existingPhotosCount: existingPhotosForCamera
+                )
+            }
+        }
+        // Vastu Gallery view
+        .fullScreenCover(isPresented: $showVastuGallery) {
+            // Using VastuGalleryView from VastuGalleryScreen.swift
+            VastuGalleryView()
+        }
+        // Navigation to PropertyAddressListScreen
+        .fullScreenCover(isPresented: $navigateToPropertyAddressList) {
+            PropertyAddressListScreen()
+                .navigationBarHidden(true)
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(
+                title: Text("Room Management"),
+                message: Text(alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+    
     // Room creation with backend API
     private func addRoom() {
         let trimmedName = newRoomName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -233,370 +317,6 @@ struct HomeAnalyzeView: View {
         loadRoomsForProperty(propertyId: propertyId)
     }
     
-    // MARK: - Body Components
-    
-    // Header component
-    private var headerView: some View {
-        HStack {
-            // Back button
-            Button(action: {
-                navigateToPropertyAddressList = true
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(Color(hex: "#4A2511"))
-            }
-            
-            Spacer()
-            
-            // Centered logo
-            Image("headerimage")
-                .frame(width: 40, height: 40)
-            
-            Spacer()
-            
-            // User profile button
-            Button(action: {
-                // Handle profile
-            }) {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 24))
-                    .foregroundColor(.black)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-    }
-    
-    // Title component
-    private var titleView: some View {
-        HStack {
-            Text("Analyze your space")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-    }
-    
-    // Vastu Gallery card component
-    private var vastuGalleryCardView: some View {
-        VStack(spacing: 15) {
-            HStack {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Vastu Gallery")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                    
-                    Text("View and manage all your Analyzed Spaces")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    // Navigate to Vastu Gallery View
-                    showVastuGallery = true
-                }) {
-                    Text("View Property")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 15)
-                        .frame(height: 36)
-                        .background(Color(hex: "#DD8E2E"))
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal, 15)
-            .padding(.vertical, 15)
-        }
-        .background(Color.white)
-        .cornerRadius(15)
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-        .padding(.horizontal, 20)
-    }
-    
-    // Room type selection component
-    private var roomTypeSelectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Select Room Type")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.black)
-                
-                if isLoadingRooms {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            .padding(.top, 10)
-            
-            if allRooms.isEmpty && !isLoadingRooms {
-                Text("No rooms available. Add a room to get started.")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .padding(.vertical, 8)
-            }
-            
-            HStack {
-                Menu {
-                    if allRooms.isEmpty {
-                        Text("No rooms available")
-                    } else {
-                        ForEach(allRooms, id: \.id) { room in
-                            Button(room.name) {
-                                selectedRoom = room.id
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text(selectedRoom != nil ? allRooms.first(where: { $0.id == selectedRoom })?.name ?? "Choose a room" : "Choose a room")
-                            .foregroundColor(selectedRoom == nil ? .gray : .black)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .foregroundColor(.gray)
-                            .font(.system(size: 12))
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 15)
-                    .frame(height: 36)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                .disabled(allRooms.isEmpty)
-                
-                // Start Analysis button for room
-                Button(action: {
-                    if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
-                        checkAndStartAnalysis(for: room)
-                    }
-                }) {
-                    Text("Start Analysis")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 15)
-                        .frame(height: 36)
-                        .background(selectedRoom != nil ? Color(hex: "#DD8E2E") : Color.gray)
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(selectedRoom == nil)
-            }
-        }
-        .padding(.horizontal, 15)
-        .padding(.bottom, 15)
-    }
-    
-    // Add room form component
-    private var addRoomFormView: some View {
-        VStack(spacing: 10) {
-            // Property selection for room
-            if propertiesForSelectedType.count > 1 {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Select Property")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    
-                    Menu {
-                        ForEach(propertiesForSelectedType) { property in
-                            Button(property.name) {
-                                selectedPropertyForRoom = property
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Text(selectedPropertyForRoom?.name ?? "Choose \(selectedPropertyType) property")
-                                .foregroundColor(selectedPropertyForRoom == nil ? .gray : .black)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .foregroundColor(.gray)
-                        }
-                        .padding(10)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(6)
-                    }
-                }
-            }
-            
-            HStack {
-                TextField("Enter room name", text: $newRoomName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .disabled(isLoadingRooms)
-                
-                Button(action: {
-                    // Cancel adding room
-                    showAddRoomField = false
-                    newRoomName = ""
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(isLoadingRooms)
-                
-                Button(action: addRoom) {
-                    HStack {
-                        if isLoadingRooms {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                                .foregroundColor(.white)
-                        } else {
-                            Text("Add")
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 15)
-                    .background(isLoadingRooms ? Color.gray : Color(hex: "#D4A574"))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(isLoadingRooms || newRoomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .padding(.top, 5)
-        }
-        .padding(.horizontal, 15)
-    }
-    
-    // Add room button component
-    private var addRoomButtonView: some View {
-        
-        Group {
-            if isLoadingRooms {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Loading rooms...")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Spacer()
-                }
-                .padding(.horizontal, 15)
-            } else {
-                HStack(alignment: .center) {
-                    Button(action: {
-                        showAddRoomField = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14))
-                            Text("Add a Room")
-                                .font(.system(size: 14))
-                        }
-                        .foregroundColor(Color(hex: "#DD8E2E"))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 15)
-                        .frame(height: 36)
-                        .background(Color.white)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color(hex: "#DD8E2E"), lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    Spacer()
-                }
-                .padding(.horizontal, 15)
-            }
-        }
-    }
-    
-    // Room card header component
-    private var roomCardHeaderView: some View {
-        VStack(spacing: 15) {
-            VStack {
-                HStack {
-                    Text("Analyze a Specific Room")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    
-                    Spacer()
-                }
-                
-                HStack {
-                    Text("Check the Vastu of any room, one by one.")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, 15)
-            .padding(.top, 15)
-        }
-        
-    }
-   
-    // Entrance card component
-    private var entranceCardView: some View {
-        VStack(spacing: 15) {
-           
-               
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Image("property")
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        
-                        .cornerRadius(15)
-                    HStack {
-                        Text("Analyze Your Main Entrance")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .padding(.leading, 15)
-                        
-                        Spacer()
-                    }
-                    
-                    HStack {
-                        Text("Unlock the energy of your home's main entry.")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .padding(.leading, 15)
-                            Spacer()
-                    }
-                    
-                    // Start Analysis button
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            if let entranceRoom = entranceObject {
-                                checkAndStartEntranceAnalysis(for: entranceRoom)
-                            } else {
-                                alertMessage = "Entrance room not found. Please try again."
-                                showAlert = true
-                            }
-                        }) {
-                            Text("Start Analysis")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 15)
-                                .background(Color(hex: "#DD8E2E"))
-                                .cornerRadius(8)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .frame(width: UIScreen.main.bounds.width / 3)
-                    }
-                    
-                }
-                .padding(.bottom, 15)
-            
-        }
-        .background(Color.white)
-        .cornerRadius(15)
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-        .padding(.horizontal, 20)
-    }
-    
     // Photo limit checks
     private func checkAndStartAnalysis(for room: RoomData) {
         photoService.getPhotosInRoom(roomId: room.id) { result in
@@ -644,88 +364,367 @@ struct HomeAnalyzeView: View {
         }
     }
     
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Header with logo
-                headerView
-                
-                // Title
-                titleView
-                
-                // Main Entrance Card
-                entranceCardView
-                
-                // Analyze a Specific Room Card
-                VStack {
-                    roomCardHeaderView
-                   
+    // MARK: - Body Components
+    
+    // Header component
+    private var headerView: some View {
+        HStack {
+            // Back button
+            Button(action: {
+                navigateToPropertyAddressList = true
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(hex: "#4A2511"))
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
+            
+            // Centered logo
+            Image("headerimage")
+                .frame(width: 40, height: 40)
+            
+            Spacer()
+            
+            // User profile button
+            Button(action: {
+                // Handle profile
+            }) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 24))
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+    }
+    
+    // Title component
+    private var titleView: some View {
+        HStack {
+            Text("Analyze your space")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+    }
+    
+    // Vastu Gallery card component
+    private var vastuGalleryCardView: some View {
+        VStack(spacing: 15) {
+            HStack {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Vastu Gallery")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
                     
-                    // Add Room button with loading state
-                    addRoomButtonView
-                    
-                    // Add Room Form
-                    if showAddRoomField {
-                        addRoomFormView
-                    }
-                    
-                    // Select Room Type dropdown
-                    roomTypeSelectionView
+                    Text("View and manage all your Analyzed Spaces")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
                 }
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                .padding(.horizontal, 20)
                 
-                // Your Vastu Gallery Card
-                vastuGalleryCardView
+                Spacer()
                 
-                Spacer(minLength: 100) // Space for bottom navigation
+                Button(action: {
+                    // Navigate to Vastu Gallery View
+                    showVastuGallery = true
+                }) {
+                    Text("View Property")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(Color(hex: "#DD8E2E"))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.bottom, 20)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 15)
         }
-        .navigationBarHidden(true)
-        .onAppear {
-            loadPropertiesAndRooms()
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 20)
+    }
+    
+    // Room type selection component
+    private var roomTypeSelectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Select Room Type")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.black)
+                
+                if isLoadingRooms {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
+            .padding(.horizontal, 15)
+            .padding(.top, 10)
+            
+            if allRooms.isEmpty && !isLoadingRooms {
+                Text("No rooms available. Add a room to get started.")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 15)
+            }
+            
+            HStack {
+                Menu {
+                    if allRooms.isEmpty {
+                        Text("No rooms available")
+                    } else {
+                        ForEach(allRooms, id: \.id) { room in
+                            Button(room.name) {
+                                selectedRoom = room.id
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(selectedRoom != nil ? allRooms.first(where: { $0.id == selectedRoom })?.name ?? "Choose a room" : "Choose a room")
+                            .foregroundColor(selectedRoom == nil ? .gray : .black)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 12))
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 15)
+                    .frame(height: 36)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .disabled(allRooms.isEmpty)
+                .padding(.horizontal, 15)
+                .buttonStyle(.plain)
+                // Start Analysis button for room
+                Button(action: {
+                    if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
+                        checkAndStartAnalysis(for: room)
+                    }
+                }) {
+                    Text("Start Analysis")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(selectedRoom != nil ? Color(hex: "#DD8E2E") : Color.gray)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+                .disabled(selectedRoom == nil)
+                .padding(.trailing, 15)
+                 
+            }
+        }.padding(.bottom, 10)
+    }
+    
+    // Add room form component
+    private var addRoomFormView: some View {
+        VStack(spacing: 10) {
+            // Property selection for room
+            if propertiesForSelectedType.count > 1 {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Select Property")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    
+                    Menu {
+                        ForEach(propertiesForSelectedType) { property in
+                            Button(property.name) {
+                                selectedPropertyForRoom = property
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } label: {
+                        HStack {
+                            Text(selectedPropertyForRoom?.name ?? "Choose \(selectedPropertyType) property")
+                                .foregroundColor(selectedPropertyForRoom == nil ? .gray : .black)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(20)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+            }
+            
+            HStack {
+                TextField("Enter room name", text: $newRoomName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .disabled(isLoadingRooms)
+                
+                Button(action: {
+                    // Cancel adding room
+                    showAddRoomField = false
+                    newRoomName = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoadingRooms)
+                
+                Button(action: addRoom) {
+                    HStack {
+                        if isLoadingRooms {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .foregroundColor(.white)
+                        } else {
+                            Text("Add")
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(isLoadingRooms ? Color.gray : Color(hex: "#D4A574"))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoadingRooms || newRoomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.top, 5)
         }
-        // Camera for regular room analysis
-        .fullScreenCover(isPresented: $showCameraView) {
-            if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
-                RoomCameraView(
-                    roomId: room.id,
-                    roomName: room.name,
-                    maxPhotos: maxPhotosForCamera,
-                    existingPhotosCount: existingPhotosForCamera
-                )
+        .padding(.horizontal, 15)
+    }
+    
+    // Add room button component
+    private var addRoomButtonView: some View {
+        Group {
+            if isLoadingRooms {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading rooms...")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .padding(.horizontal, 15)
+            } else {
+                HStack(alignment: .center) {
+                    Button(action: {
+                        showAddRoomField = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(Color(hex: "#DD8E2E"))
+                                .font(.system(size: 24))
+                            
+                            Text("Add Room")
+                                .font(.headline)
+                                .foregroundColor(Color(hex: "#DD8E2E"))
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 15)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(hex: "#DD8E2E"), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 15)
             }
         }
-        // Camera for entrance room analysis
-        .fullScreenCover(isPresented: $showEntranceCameraView) {
-            if let entranceRoom = entranceObject {
-                RoomCameraView(
-                    roomId: entranceRoom.id,
-                    roomName: entranceRoom.name == "Entrance" ? "Entrance" : entranceRoom.name,
-                    maxPhotos: maxPhotosForCamera,
-                    existingPhotosCount: existingPhotosForCamera
-                )
+    }
+    
+    // Room card header component
+    private var roomCardHeaderView: some View {
+        VStack(spacing: 15) {
+            VStack {
+                HStack {
+                    Text("Analyze a Specific Room")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                }
+                
+                HStack {
+                    Text("Check the Vastu of any room, one by one.")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
             }
+            .padding(.horizontal, 15)
+            .padding(.top, 15)
         }
-        // Vastu Gallery view
-        .fullScreenCover(isPresented: $showVastuGallery) {
-            // Using VastuGalleryView from VastuGalleryScreen.swift
-            VastuGalleryView()
+    }
+   
+    // Entrance card component
+    private var entranceCardView: some View {
+        VStack(spacing: 15) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image("property")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .cornerRadius(15)
+                
+                HStack {
+                    Text("Analyze Your Main Entrance")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .padding(.leading, 15)
+                    
+                    Spacer()
+                }
+                
+                HStack {
+                    Text("Unlock the energy of your home's main entry.")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .padding(.leading, 15)
+                    Spacer()
+                }
+                
+                // Start Analysis button
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        if let entranceRoom = entranceObject {
+                            checkAndStartEntranceAnalysis(for: entranceRoom)
+                        } else {
+                            alertMessage = "Entrance room not found. Please try again."
+                            showAlert = true
+                        }
+                    }) {
+                        Text("Start Analysis")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 15)
+                            .background(Color(hex: "#DD8E2E"))
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: UIScreen.main.bounds.width / 3)
+                }
+            }
+            .padding(.bottom, 15)
         }
-        // Navigation to PropertyAddressListScreen
-        .fullScreenCover(isPresented: $navigateToPropertyAddressList) {
-            PropertyAddressListScreen()
-                .navigationBarHidden(true)
-        }
-        .alert(isPresented: $showAlert) {
-            Alert(
-                title: Text("Room Management"),
-                message: Text(alertMessage),
-                dismissButton: .default(Text("OK"))
-            )
-        }
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 20)
     }
 }

@@ -128,7 +128,7 @@ struct EvaluationQuestionsView: View {
             // Logo in the center
             Image("headerimage")
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .frame(width: 40, height: 40)
             
             Spacer()

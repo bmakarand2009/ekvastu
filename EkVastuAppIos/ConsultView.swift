@@ -36,13 +36,14 @@ struct ConsultView: View {
                             showingSafari = true
                         }) {
                             Text("Coffee with Jaya")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.headline)
                                 .foregroundColor(.white)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, 12)
                                 .padding(.horizontal, 20)
                                 .background(Color(hex: "#DD8E2E"))
-                                .cornerRadius(8)
+                                .cornerRadius(25)
                         }
+                        .buttonStyle(.plain)
                         Spacer()
                     }
                     .padding(.horizontal, 20)
@@ -127,7 +128,7 @@ struct ConsultView: View {
                     .font(.system(size: 20))
                     .foregroundColor(.black)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
             
             // Profile image
             Image("jaya") // Using jaya as a placeholder for profile
@@ -143,7 +144,7 @@ struct ConsultView: View {
                     .font(.system(size: 20))
                     .foregroundColor(.black)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)

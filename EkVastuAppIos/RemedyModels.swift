@@ -25,22 +25,6 @@ struct Remedy: Identifiable, Codable {
     }
 }
 
-struct RemedyStep: Identifiable, Codable {
-    let id: String
-    let stepNumber: Int
-    let description: String
-    let imageUrl: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case id = "_id"
-        case stepNumber
-        case description
-        case imageUrl
-    }
-}
+// RemedyStep removed - unused
 
-enum RemedyFilterType: String, CaseIterable {
-    // Temporarily removed filter types as requested
-    // Will be reimplemented later
-    case placeholder = "Remedies"
-}
+// RemedyFilterType removed - unused
