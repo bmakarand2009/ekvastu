@@ -392,8 +392,8 @@ struct UserDetailsForm: View {
                 if let profile = profile, profileManager.profileExists {
                     // Profile exists, populate form with existing data
                     populateFormWithProfile(profile)
-                    profileMessage = "Profile found! You can update your information below."
-                    showProfileMessage = true
+                    // Do not show banner when profile exists and fields are populated
+                    showProfileMessage = false
                 }
             }
         }

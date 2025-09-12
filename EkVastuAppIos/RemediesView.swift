@@ -229,7 +229,7 @@ struct RemedyDetailView: View {
                             Text("Book Consultation")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
-                                .frame(width: 260, height: 56)
+                                .frame(width: 260, height: 40)
                                 .background(Color(hex: "#3A1F0F"))
                                 .cornerRadius(12)
                         }

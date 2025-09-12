@@ -36,12 +36,13 @@ struct ConsultView: View {
                             showingSafari = true
                         }) {
                             Text("Coffee with Jaya")
-                                .font(.headline)
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 15)
+                                .frame(height: 36)
                                 .background(Color(hex: "#DD8E2E"))
-                                .cornerRadius(25)
+                                .cornerRadius(8)
                         }
                         .buttonStyle(.plain)
                         Spacer()
@@ -118,25 +119,23 @@ struct ConsultView: View {
         HStack(spacing: 15) {
             // EK Logo
             Image("headerimage")
+                .resizable()                 // Allow scaling
+                .scaledToFit()               // Keep aspect ratio within frame
                 .frame(width: 40, height: 40)
+                .clipped()
             
             Spacer()
             
             // Bell icon
             Button(action: {}) {
-                Image(systemName: "bell.fill")
+                Image(systemName: "bell")
                     .font(.system(size: 20))
                     .foregroundColor(.black)
             }
             .buttonStyle(.plain)
             
             // Profile image
-            Image("jaya") // Using jaya as a placeholder for profile
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 35, height: 35)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.white, lineWidth: 1))
+            ProfileImageView(size: 24)
             
             // Menu button
             Button(action: {}) {

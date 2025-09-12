@@ -187,9 +187,23 @@ struct VastuScoreView: View {
 
     private var headerView: some View {
         VStack(spacing: 8) {
-            // Top row with logo and action buttons
+            // Top row with back button, centered logo, and action buttons
             HStack {
-                // Logo on left side
+                // Back button on left
+                Button(action: { 
+                    // Set flag to false to prevent navigation to HomeAnalyzeView
+                    shouldNavigateToHome = false
+                    presentationMode.wrappedValue.dismiss() 
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(Color(hex: "#4A2511"))
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                // Logo in center
                 Image("headerimage")
                     .resizable()
                     .scaledToFit()
@@ -207,11 +221,7 @@ struct VastuScoreView: View {
                 
                 // Profile image
                 Button(action: {}) {
-                    Image("jaya")
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 30, height: 30)
-                        .clipShape(Circle())
+                    ProfileImageView(size: 30)
                 }
                 .buttonStyle(.plain)
                 
@@ -226,24 +236,11 @@ struct VastuScoreView: View {
             .padding(.horizontal, 20)
             .padding(.top, 10)
             
-            // Second row with back button and title side by side
+            // Second row with title completely left-aligned
             HStack {
-                // Back button
-                Button(action: { 
-                    // Set flag to false to prevent navigation to HomeAnalyzeView
-                    shouldNavigateToHome = false
-                    presentationMode.wrappedValue.dismiss() 
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(Color(hex: "#4A2511"))
-                }
-                .buttonStyle(.plain)
-                
                 Text(roomName)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.black)
-                    .padding(.horizontal, 20)
                 
                 Spacer()
             }

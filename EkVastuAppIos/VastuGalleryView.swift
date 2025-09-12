@@ -1,4 +1,5 @@
 import SwiftUI
+import SafariServices
 
 struct VastuGalleryView: View {
     // Environment
@@ -9,6 +10,7 @@ struct VastuGalleryView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var roomsWithPhotos: [RoomWithPhotos] = []
+    @State private var showingSafari = false
     
     // Services
     private let roomService = RoomService.shared
@@ -71,6 +73,8 @@ struct VastuGalleryView: View {
             .navigationBarTitle("")
             .navigationBarBackButtonHidden(true)
             .navigationBarItems(leading: backButton)
+            .toolbarBackground(Color(hex: "#FFF1E6"), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
                 loadRoomsWithPhotos()
                 
@@ -98,6 +102,9 @@ struct VastuGalleryView: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+            .sheet(isPresented: $showingSafari) {
+                SafariView(url: URL(string: "https://bookme.name/JayaKaramchandani/discovery-call-home-vastu-visit-online-session")!)
+            }
         }
     }
     
@@ -105,16 +112,18 @@ struct VastuGalleryView: View {
     
     // Back button
     private var backButton: some View {
-        Button(action: {
-            presentationMode.wrappedValue.dismiss()
-        }) {
-            HStack {
+        HStack(spacing: 10) {
+            Button(action: {
+                presentationMode.wrappedValue.dismiss()
+            }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
-                Text("Vastu Gallery")
-                    .font(.headline)
+                    .foregroundColor(.black)
             }
-            .foregroundColor(.black)
+            
+            Text("Vastu Gallery")
+                .font(.headline)
+                .foregroundColor(.black)
         }
     }
     
@@ -136,8 +145,8 @@ struct VastuGalleryView: View {
                 Spacer()
                 
                 Button(action: {
-                    NotificationCenter.default.post(name: NSNotification.Name("SwitchToConsultTab"), object: nil)
-                    presentationMode.wrappedValue.dismiss()
+                    // Open booking URL in SafariView
+                    showingSafari = true
                 }) {
                     HStack {
                         

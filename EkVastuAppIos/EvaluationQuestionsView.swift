@@ -84,10 +84,12 @@ struct EvaluationQuestionsView: View {
                                     .background(isAllAnswered ? Color(hex: "#DD8E2E") : Color.gray)
                                     .cornerRadius(8)
                             }
+                            .buttonStyle(.plain)
                             .disabled(!isAllAnswered)
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
                             .padding(.bottom, 30)
+                            
                             .fullScreenCover(isPresented: $showScore) {
                                 VastuScoreView(roomId: roomId, roomName: roomName, answers: builtAnswers, shouldNavigateToHome: $shouldNavigateToHome)
                                     .onDisappear {
@@ -121,7 +123,7 @@ struct EvaluationQuestionsView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.black)
-            }
+            }.buttonStyle(.plain)
             
             Spacer()
             
@@ -138,7 +140,7 @@ struct EvaluationQuestionsView: View {
                 Image(systemName: "bell")
                     .font(.system(size: 20))
                     .foregroundColor(.black)
-            }
+            }.buttonStyle(.plain)
             
             // Profile image
             Button(action: {}) {
@@ -148,14 +150,14 @@ struct EvaluationQuestionsView: View {
                     .frame(width: 35, height: 35)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.white, lineWidth: 1))
-            }
+            } .buttonStyle(.plain)
             
             // Menu button
             Button(action: {}) {
                 Image(systemName: "line.horizontal.3")
                     .font(.system(size: 20))
                     .foregroundColor(.black)
-            }
+            }.buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)

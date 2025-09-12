@@ -383,7 +383,10 @@ struct HomeAnalyzeView: View {
             
             // Centered logo
             Image("headerimage")
+                .resizable()                 // Allow scaling
+                .scaledToFit()               // Keep aspect ratio within frame
                 .frame(width: 40, height: 40)
+                .clipped()
             
             Spacer()
             
@@ -391,9 +394,7 @@ struct HomeAnalyzeView: View {
             Button(action: {
                 // Handle profile
             }) {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 24))
-                    .foregroundColor(.black)
+                ProfileImageView(size: 24)
             }
             .buttonStyle(.plain)
         }
