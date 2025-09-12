@@ -83,19 +83,6 @@ struct UserDetailsForm: View {
                             .padding(.top, 30)
                         
                         Spacer()
-                        
-                        Button(action: {
-                            // Show confirmation alert before logout
-                            alertMessage = "Are you sure you want to logout?"
-                            showAlert = true
-                        }) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(Color(hex: "#4A2511"))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 20)
-                        .padding(.top, 30)
                     }
                     .padding(.top, 20)
                     

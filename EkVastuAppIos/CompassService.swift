@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import Combine
+import UIKit
 
 class CompassService: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
@@ -14,29 +15,65 @@ class CompassService: NSObject, ObservableObject {
     private override init() {
         super.init()
         setupLocationManager()
+        observeOrientationChanges()
     }
     
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.headingFilter = 1 // Update when heading changes by 1 degree
-        locationManager.headingOrientation = .portrait
+        updateHeadingOrientation()
+    }
+    
+    private func observeOrientationChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOrientationChange),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+    }
+    
+    @objc private func handleOrientationChange() {
+        updateHeadingOrientation()
+    }
+    
+    private func updateHeadingOrientation() {
+        // Map device orientation to heading orientation for accurate results
+        switch UIDevice.current.orientation {
+        case .portrait:
+            locationManager.headingOrientation = .portrait
+        case .portraitUpsideDown:
+            locationManager.headingOrientation = .portraitUpsideDown
+        case .landscapeLeft:
+            locationManager.headingOrientation = .landscapeLeft
+        case .landscapeRight:
+            locationManager.headingOrientation = .landscapeRight
+        default:
+            locationManager.headingOrientation = .portrait
+        }
     }
     
     func startUpdates() {
-        if CLLocationManager.headingAvailable() {
-            // Request location permission if needed for true heading
-            locationManager.requestWhenInUseAuthorization()
-            
-            // Start location updates for true heading (uses GPS + compass)
-            if CLLocationManager.locationServicesEnabled() {
-                locationManager.startUpdatingLocation()
-            }
-            
-            // Start heading updates
-            locationManager.startUpdatingHeading()
-        } else {
+        guard CLLocationManager.headingAvailable() else {
             print("Compass not available on this device")
+            return
         }
+        // Request location permission if needed for true heading
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        } else {
+            startAuthorizedUpdates()
+        }
+    }
+    
+    private func startAuthorizedUpdates() {
+        // Start location updates for true heading (uses GPS + compass)
+        if CLLocationManager.locationServicesEnabled() {
+            locationManager.startUpdatingLocation()
+        }
+        // Start heading updates
+        locationManager.startUpdatingHeading()
     }
     
     func stopUpdates() {
@@ -73,6 +110,19 @@ class CompassService: NSObject, ObservableObject {
 }
 
 extension CompassService: CLLocationManagerDelegate {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            startAuthorizedUpdates()
+        case .denied, .restricted:
+            print("Location authorization denied or restricted; heading may be unavailable")
+        case .notDetermined:
+            break
+        @unknown default:
+            break
+        }
+    }
+    
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         // Use trueHeading if available (more accurate), otherwise use magneticHeading
         let heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
