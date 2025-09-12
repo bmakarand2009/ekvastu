@@ -25,6 +25,14 @@ class TokenManager: ObservableObject {
     func storeTokens(accessToken: String, refreshToken: String) {
         print("🔐 TokenManager: Storing/updating authentication tokens")
         
+        // Basic sanity checks to avoid storing invalid/dev fallback tokens
+        let parts = accessToken.split(separator: ".")
+        if parts.count != 3 || accessToken.contains("DEV_SIGNATURE_FOR_TESTING_ONLY") {
+            print("⚠️ TokenManager: Rejected invalid or development fallback token. Not storing.")
+            self.clearTokens()
+            return
+        }
+        
         // Clear any existing tokens first
         if self.accessToken != nil {
             print("🔄 Updating existing tokens with new ones from signin")
@@ -82,8 +90,41 @@ class TokenManager: ObservableObject {
     }
     
     nonisolated func hasValidToken() -> Bool {
-        let token = userDefaults.string(forKey: accessTokenKey)
-        return token != nil && !token!.isEmpty
+        guard let token = userDefaults.string(forKey: accessTokenKey), !token.isEmpty else {
+            return false
+        }
+        
+        // Basic JWT expiry validation to avoid using expired tokens
+        let parts = token.split(separator: ".")
+        if parts.count == 3 {
+            let payloadB64 = String(parts[1])
+            // Base64URL decode
+            var normalized = payloadB64
+                .replacingOccurrences(of: "-", with: "+")
+                .replacingOccurrences(of: "_", with: "/")
+            let paddingLen = 4 - (normalized.count % 4)
+            if paddingLen < 4 { normalized += String(repeating: "=", count: paddingLen) }
+            
+            if let data = Data(base64Encoded: normalized),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                // exp could be Int or Double
+                var expTime: TimeInterval?
+                if let exp = json["exp"] as? Double {
+                    expTime = exp
+                } else if let exp = json["exp"] as? Int {
+                    expTime = TimeInterval(exp)
+                }
+                if let exp = expTime {
+                    let now = Date().timeIntervalSince1970
+                    if now >= exp {
+                        print("⚠️ TokenManager: Access token expired")
+                        return false
+                    }
+                }
+            }
+        }
+        
+        return true
     }
     
     // MARK: - Token Refresh (Future Implementation)

@@ -21,7 +21,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c</string>
+				<string>com.googleusercontent.apps.632759342287-f8r3masop1ijr8r60tb01t5d13e5shqe</string>
 			</array>
 		</dict>
 	</array>
@@ -30,7 +30,7 @@
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
 	<key>GIDClientID</key>
-	<string>846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c.apps.googleusercontent.com</string>
+	<string>632759342287-f8r3masop1ijr8r60tb01t5d13e5shqe.apps.googleusercontent.com</string>
 	<key>GMSApiKey</key>
 	<string>AIzaSyCiIbvc_BUCEiItFKPN9CUev3vmcCgmEZQ</string>
 	<key>LSRequiresIPhoneOS</key>

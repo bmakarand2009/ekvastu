@@ -194,6 +194,18 @@ class NetworkService: ObservableObject {
                 print("📥 Response status: \(httpResponse.statusCode)")
                 if let responseString = String(data: data, encoding: .utf8) {
                     print("📥 Response data: \(responseString)")
+                    // Detect invalid/expired JWTs and force re-auth
+                    let lower = responseString.lowercased()
+                    if httpResponse.statusCode >= 400 && (
+                        lower.contains("signature verification failed") ||
+                        lower.contains("not enough or too many segments") ||
+                        (lower.contains("jwt") && lower.contains("signature") && lower.contains("failed"))
+                    ) {
+                        DispatchQueue.main.async {
+                            TokenManager.shared.clearTokens()
+                        }
+                        throw NetworkError.unauthorized
+                    }
                 }
                 
                 switch httpResponse.statusCode {
@@ -281,6 +293,18 @@ class NetworkService: ObservableObject {
                 print("📥 Response status: \(httpResponse.statusCode)")
                 if let responseString = String(data: data, encoding: .utf8) {
                     print("📥 Response data: \(responseString)")
+                    // Detect invalid/expired JWTs and force re-auth
+                    let lower = responseString.lowercased()
+                    if httpResponse.statusCode >= 400 && (
+                        lower.contains("signature verification failed") ||
+                        lower.contains("not enough or too many segments") ||
+                        (lower.contains("jwt") && lower.contains("signature") && lower.contains("failed"))
+                    ) {
+                        DispatchQueue.main.async {
+                            TokenManager.shared.clearTokens()
+                        }
+                        throw NetworkError.unauthorized
+                    }
                 }
                 
                 switch httpResponse.statusCode {

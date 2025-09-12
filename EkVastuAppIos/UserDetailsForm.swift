@@ -361,6 +361,28 @@ struct UserDetailsForm: View {
                     // Show profile not found message
                     profileMessage = errorMessage
                     showProfileMessage = true
+
+                    // If not authenticated, attempt to refresh backend tokens using Firebase user
+                    if errorMessage == "Not authenticated" {
+                        if let firebaseUser = authManager.user {
+                            firebaseUser.getIDToken { idToken, _ in
+                                if let idToken = idToken {
+                                    AuthService.shared.googleLogin(idToken: idToken) { result in
+                                        DispatchQueue.main.async {
+                                            switch result {
+                                            case .success:
+                                                // Tokens should be stored by AuthService; retry profile check
+                                                profileManager.checkAndLoadProfile()
+                                            case .failure:
+                                                // Keep showing the message; user can try again or logout
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .onChange(of: profileManager.currentProfile) { profile in
@@ -551,6 +573,48 @@ struct UserDetailsForm: View {
         let apiTimeFormatter = DateFormatter()
         apiTimeFormatter.dateFormat = "HH:mm:ss"
         let timeString = apiTimeFormatter.string(from: timeOfBirth)
+        
+        // Ensure backend tokens exist; if not, refresh via Firebase ID token then proceed
+        if !TokenManager.shared.hasValidToken() {
+            if let firebaseUser = authManager.user {
+                firebaseUser.getIDToken { idToken, _ in
+                    if let idToken = idToken {
+                        AuthService.shared.googleLogin(idToken: idToken) { result in
+                            DispatchQueue.main.async {
+                                switch result {
+                                case .success:
+                                    // After obtaining tokens, retry submission by calling submitForm() again
+                                    self.isLoading = false
+                                    self.isUpdatingProfile = false
+                                    // Call submit again on next runloop to avoid recursion depth
+                                    DispatchQueue.main.async {
+                                        self.submitForm()
+                                    }
+                                case .failure(let error):
+                                    self.isLoading = false
+                                    self.isUpdatingProfile = false
+                                    self.alertMessage = "Authentication expired. Please try again. (\(error.localizedDescription))"
+                                    self.showAlert = true
+                                }
+                            }
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            self.isLoading = false
+                            self.isUpdatingProfile = false
+                            self.alertMessage = "Failed to refresh authentication. Please sign in again."
+                            self.showAlert = true
+                        }
+                    }
+                }
+            } else {
+                self.isLoading = false
+                self.isUpdatingProfile = false
+                self.alertMessage = "Not authenticated. Please sign in again."
+                self.showAlert = true
+            }
+            return
+        }
         
         // Check if profile exists to determine create vs update
         if profileManager.profileExists {

@@ -242,16 +242,9 @@ struct SignInPage: View {
                 if AuthenticationManager.isCheckingUserStatus {
                     // This is a placeholder - the actual navigation happens in checkUserStatus completion
                     EmptyView()
-                } else if !AuthenticationManager.hasCompletedUserDetails {
-                    NavigationLink(destination: UserDetailsForm(), isActive: $showHomeView) {
-                        EmptyView()
-                    }
-                } else if !AuthenticationManager.hasCompletedPropertyAddress {
-                    NavigationLink(destination: PropertyAddressScreen(), isActive: $showHomeView) {
-                        EmptyView()
-                    }
                 } else {
-                    NavigationLink(destination: ContentView(), isActive: $showHomeView) {
+                    // Always navigate to UserDetailsForm after Google Sign-In
+                    NavigationLink(destination: UserDetailsForm(), isActive: $showHomeView) {
                         EmptyView()
                     }
                 }
@@ -463,7 +456,24 @@ struct SignInPage: View {
                                 case .failure(let error):
                                     print("❌ Backend Google login failed: \(error.localizedDescription)")
                                     self.isLoading = false
-                                    self.errorMessage = "Failed to authenticate with backend. Please try again."
+                                    
+                                    // Provide more specific error messages based on error type
+                                    switch error {
+                                    case .serverError(let code, let message):
+                                        if code == 500, let message = message, message.contains("Google services file not found") {
+                                            self.errorMessage = "Google login is not configured on the server. Please try email login instead."
+                                        } else {
+                                            self.errorMessage = "Server error (\(code)): \(message ?? "Unknown error")"
+                                        }
+                                    case .unauthorized:
+                                        self.errorMessage = "Authentication failed. Please try again or use email login."
+                                    case .networkError(_):
+                                        self.errorMessage = "Network connection issue. Please check your internet connection."
+                                    case .timeout:
+                                        self.errorMessage = "Connection timed out. Please try again later."
+                                    default:
+                                        self.errorMessage = "Failed to authenticate with backend. Please try again."  
+                                    }
                                 }
                             }
                         }

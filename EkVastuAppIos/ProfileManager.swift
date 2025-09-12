@@ -1,8 +1,13 @@
 import Foundation
 import Combine
+import FirebaseAuth
 
 // MARK: - Profile Manager
-class ProfileManager: ObservableObject {
+class ProfileManager: ObservableObject {    
+    // Simple authentication check without retry
+    private func checkAuthentication() -> Bool {
+        return TokenManager.shared.hasValidToken()
+    }
     static let shared = ProfileManager()
     
     @Published var currentProfile: ProfileData?
@@ -19,6 +24,18 @@ class ProfileManager: ObservableObject {
     
     /// Check if profile exists and load it
     func checkAndLoadProfile() {
+        // First check if user is authenticated
+        guard checkAuthentication() else {
+            print("⚠️ ProfileManager: Not authenticated, skipping profile check")
+            DispatchQueue.main.async { [weak self] in
+                self?.isLoading = false
+                self?.currentProfile = nil
+                self?.profileExists = false
+                self?.errorMessage = "Not authenticated"
+            }
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
@@ -42,7 +59,7 @@ class ProfileManager: ObservableObject {
                     }
                     
                 case .failure(let error):
-                    // Handle error
+                    // Handle error without retries
                     self?.currentProfile = nil
                     self?.profileExists = false
                     self?.errorMessage = error.localizedDescription
@@ -54,6 +71,16 @@ class ProfileManager: ObservableObject {
     
     /// Create a new profile
     func createProfile(dob: String, placeOfBirth: String, timeOfBirth: String, completion: @escaping (Bool, String?) -> Void) {
+        // First check if user is authenticated
+        guard checkAuthentication() else {
+            print("⚠️ ProfileManager: Not authenticated, skipping profile creation")
+            DispatchQueue.main.async {
+                self.errorMessage = "Not authenticated"
+                completion(false, "Not authenticated")
+            }
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
@@ -82,7 +109,7 @@ class ProfileManager: ObservableObject {
                     }
                     
                 case .failure(let error):
-                    // Handle error
+                    // Handle error without retries
                     self?.errorMessage = error.localizedDescription
                     print("❌ Failed to create profile: \(error.localizedDescription)")
                     completion(false, error.localizedDescription)
@@ -93,6 +120,16 @@ class ProfileManager: ObservableObject {
     
     /// Update existing profile
     func updateProfile(placeOfBirth: String? = nil, timeOfBirth: String? = nil, completion: @escaping (Bool, String?) -> Void) {
+        // First check if user is authenticated
+        guard checkAuthentication() else {
+            print("⚠️ ProfileManager: Not authenticated, skipping profile update")
+            DispatchQueue.main.async {
+                self.errorMessage = "Not authenticated"
+                completion(false, "Not authenticated")
+            }
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
@@ -120,7 +157,7 @@ class ProfileManager: ObservableObject {
                     }
                     
                 case .failure(let error):
-                    // Handle error
+                    // Handle error without retries
                     self?.errorMessage = error.localizedDescription
                     print("❌ Failed to update profile: \(error.localizedDescription)")
                     completion(false, error.localizedDescription)

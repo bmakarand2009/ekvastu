@@ -360,14 +360,17 @@ class AuthenticationManager: ObservableObject {
     func signInWithGoogle(presenting viewController: UIViewController, completion: @escaping (Bool) -> Void) {
         print("Starting Google Sign-In process...")
         
-        // Get the client ID from Info.plist
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String else {
-            print("Error: No client ID found in Info.plist")
+        // Get the client ID from GoogleService-Info.plist directly
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            print("Error: No Firebase client ID found")
             completion(false)
             return
         }
         
-        print("Using client ID: \(clientID)")
+        // Create GIDConfiguration with the correct client ID
+        let config = GIDConfiguration(clientID: clientID)
+        
+        print("Using Firebase client ID: \(clientID)")
         
         #if targetEnvironment(simulator)
         // Additional simulator-specific keychain reset
@@ -383,7 +386,7 @@ class AuthenticationManager: ObservableObject {
         KeychainHelper.clearKeychain()
         
         // Start the sign in flow with the latest API
-        GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { [weak self] result, error in
+        GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { [weak self] signInResult, error in
             if let error = error {
                 print("Google Sign-In error: \(error.localizedDescription)")
                 self?.authError = error
@@ -421,13 +424,13 @@ class AuthenticationManager: ObservableObject {
                 #endif
             }
             
-            guard let result = result else {
+            guard let signInResult = signInResult else {
                 print("Error: Missing sign-in result")
                 completion(false)
                 return
             }
             
-            let user = result.user
+            let user = signInResult.user
             guard let idToken = user.idToken?.tokenString else {
                 print("Error: Missing ID token")
                 completion(false)
@@ -445,6 +448,29 @@ class AuthenticationManager: ObservableObject {
                 if let error = error {
                     print("Firebase sign-in error: \(error.localizedDescription)")
                     self?.authError = error
+                    
+                    // Check for OAuth client ID mismatch error
+                    let errorString = error.localizedDescription
+                    if errorString.contains("audience") && errorString.contains("is not authorized") {
+                        print("⚠️ OAuth client ID mismatch detected - using direct backend authentication")
+                        
+                        // Skip Firebase and call backend directly with the Google ID token
+                        AuthService.shared.googleLogin(idToken: idToken) { result in
+                            DispatchQueue.main.async {
+                                switch result {
+                                case .success(let response):
+                                    print("✅ Direct backend Google login successful")
+                                    completion(true)
+                                case .failure(let error):
+                                    print("❌ Direct backend Google login failed: \(error.localizedDescription)")
+                                    completion(false)
+                                }
+                            }
+                        }
+                        return
+                    }
+                    
+                    // Handle other Firebase errors
                     completion(false)
                     return
                 }

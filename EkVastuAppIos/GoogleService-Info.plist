@@ -3,21 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c.apps.googleusercontent.com</string>
+	<string>632759342287-f8r3masop1ijr8r60tb01t5d13e5shqe.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.846920498061-vsgkqqkqq5rtv71d755dj5pi2rpc6d8c</string>
+	<string>com.googleusercontent.apps.632759342287-f8r3masop1ijr8r60tb01t5d13e5shqe</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>632759342287-4j4k9p42f09jpubj8dopm5jpm9kvr97a.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDEQRxz_vZzaJyC9NZk3f3-KGVWEV-rqRg</string>
+	<string>AIzaSyD2l_Hd2pyA0vFRBr2EG0_GxzUq9jRxf1s</string>
 	<key>GCM_SENDER_ID</key>
-	<string>846920498061</string>
+	<string>632759342287</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>org.ekshakti.EkVastu</string>
+	<string>com.wajooba.generic.dev</string>
 	<key>PROJECT_ID</key>
-	<string>ekvastu-c788b</string>
+	<string>wajooba-generic</string>
 	<key>STORAGE_BUCKET</key>
-	<string>ekvastu-c788b.firebasestorage.app</string>
+	<string>wajooba-generic.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:846920498061:ios:c042959a95434575d59bc4</string>
+	<string>1:632759342287:ios:fb9a1c672e1a9e760a53ba</string>
 </dict>
 </plist>

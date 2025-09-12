@@ -61,8 +61,10 @@ struct PropertyAddressScreen: View {
                     
                     // Logo and header with back button
                     HStack {
+                        // Back button always navigates to PropertyAddressList
                         Button(action: {
-                            presentationMode.wrappedValue.dismiss()
+                            // Instead of dismiss, navigate to PropertyAddressList
+                            navigateToAddressList = true
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 20, weight: .semibold))

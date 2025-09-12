@@ -40,6 +40,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         KeychainAccessGroup.setupAccessGroup()
         #endif
         
+        // Firebase App Check is not used in this project
+        // No initialization needed
+        
         // Configure Google Sign-In with proper initialization
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config

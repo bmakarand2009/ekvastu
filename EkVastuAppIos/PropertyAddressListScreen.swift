@@ -35,6 +35,7 @@ struct PropertyAddressListScreen: View {
             VStack(alignment: .center, spacing: 0) {
                 // Header with back button and logo
                 HStack {
+                    // Back button always navigates to UserDetailsForm
                     Button(action: {
                         navigateToUserDetailsForm = true
                     }) {
