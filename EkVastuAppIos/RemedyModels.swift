@@ -1,22 +1,27 @@
 import Foundation
 
+struct RemedyResponse: Codable {
+    let success: Bool
+    let data: [Remedy]
+    let count: Int
+    let message: String
+}
+
 struct Remedy: Identifiable, Codable {
     let id: String
     let name: String
-    let description: String
-    let imageUrl: String
-    let roomType: String?
-    let issueType: String?
-    let steps: [RemedyStep]
+    let shortDesc: String
+    let longDescription: String
+    let instructions: [String]
+    let image: String
     
     enum CodingKeys: String, CodingKey {
-        case id = "_id"
+        case id
         case name
-        case description
-        case imageUrl
-        case roomType
-        case issueType
-        case steps
+        case shortDesc
+        case longDescription
+        case instructions
+        case image
     }
 }
 
@@ -35,7 +40,7 @@ struct RemedyStep: Identifiable, Codable {
 }
 
 enum RemedyFilterType: String, CaseIterable {
-    case all = "All"
-    case room = "Room"
-    case issue = "Issue"
+    // Temporarily removed filter types as requested
+    // Will be reimplemented later
+    case placeholder = "Remedies"
 }
