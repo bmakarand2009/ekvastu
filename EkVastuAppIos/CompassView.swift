@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CompassView: View {
     @StateObject private var compassService = CompassService.shared
-    @State private var isActive = false
+    @State private var isActive = true // Always active by default
     
     var body: some View {
         VStack {
@@ -136,21 +136,12 @@ struct CompassView: View {
             }
             .padding()
             
-            Toggle("Activate Compass", isOn: $isActive)
-                .padding()
-                .onChange(of: isActive) { newValue in
-                    if newValue {
-                        compassService.startUpdates()
-                    } else {
-                        compassService.stopUpdates()
-                    }
-                }
+            // Compass is always active - no toggle needed
         }
         .padding()
         .onAppear {
-            if isActive {
-                compassService.startUpdates()
-            }
+            // Always start compass updates when view appears
+            compassService.startUpdates()
         }
         .onDisappear {
             compassService.stopUpdates()

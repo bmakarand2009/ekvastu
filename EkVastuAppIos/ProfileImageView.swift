@@ -5,6 +5,9 @@ struct ProfileImageView: View {
     var lineWidth: CGFloat = 1
     @State private var profileImage: UIImage?
     @State private var isLoading = false
+    @State private var showingPopup = false
+    @State private var navigateToOnboarding = false
+    @State private var showingPopover = false
     
     var body: some View {
         ZStack {
@@ -26,8 +29,19 @@ struct ProfileImageView: View {
                     .foregroundColor(.black)
             }
         }
+        .onTapGesture {
+            showingPopover = true
+        }
+        .popover(isPresented: $showingPopover, attachmentAnchor: .point(.trailing), arrowEdge: .top) {
+            ProfilePopupView(isShowing: $showingPopover, onLogout: handleLogout)
+                .presentationCompactAdaptation(.popover)
+        }
         .onAppear {
             loadProfileImage()
+        }
+        .fullScreenCover(isPresented: $navigateToOnboarding) {
+            // Navigate to onboarding screen after logout
+            OnboardingView()
         }
     }
     
@@ -49,6 +63,16 @@ struct ProfileImageView: View {
                     }
                 }
             }.resume()
+        }
+    }
+    
+    private func handleLogout() {
+        // Use LogoutManager to handle the logout process
+        LogoutManager.shared.logout {
+            // After logout is complete, navigate to onboarding
+            DispatchQueue.main.async {
+                self.navigateToOnboarding = true
+            }
         }
     }
 }

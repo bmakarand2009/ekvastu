@@ -52,8 +52,11 @@ struct ConsultView: View {
                         SafariView(url: bookingUrl)
                     }
                     
+                    // About Jaya card
+                    aboutJayaCard
                     
                 }
+                .padding(.bottom, 30)
                 .padding(.vertical, 15)
             }
         }
@@ -150,5 +153,34 @@ struct ConsultView: View {
         .padding(.bottom, 5)
     }
     
-    
+    // MARK: - About Jaya Card
+    private var aboutJayaCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Bold header text
+            Text("About Jaya Karamchandani")
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundColor(.black)
+            
+            // First paragraph
+            Text("Jaya's passion for helping others has driven her to transform millions of lives through her expertise in Vastu Shastra. Her unique ability to make ancient Vastu wisdom accessible to modern lifestyles has brought harmony and prosperity to countless homes and workplaces.")
+                .font(.subheadline)
+                .foregroundColor(.black.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(4)
+            
+            // Second paragraph
+            Text("Jaya's approach transcends belief systems, offering proven Vastu methods that benefit everyone. She transforms spaces into sanctuaries of balance, well-being, and abundance through practical solutions rooted in timeless wisdom.")
+                .font(.subheadline)
+                .foregroundColor(.black.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(4)
+        }
+        .padding(20)
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+    }
 }
