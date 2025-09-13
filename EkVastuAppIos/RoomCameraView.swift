@@ -33,12 +33,14 @@ struct RoomCameraView: View {
         case error(message: String)
         case cameraError(message: String)
         case retakeConfirmation
+        case nextConfirmation
         
         var id: Int {
             switch self {
             case .error: return 0
             case .cameraError: return 1
             case .retakeConfirmation: return 2
+            case .nextConfirmation: return 3
             }
         }
     }
@@ -52,9 +54,15 @@ struct RoomCameraView: View {
     @State private var isCameraActive = true
     @State private var showEvaluation = false
     @State private var actualExistingPhotosCount: Int = 0 // Track actual count from backend
+    @State private var navigateAfterSave: Bool = false
     
     // Tenant config for Cloudinary
     private let tenantConfig = TenantConfigManager.shared
+    
+    // Computed: count of photos that actually exist (backend + uploaded this session)
+    private var savedPhotosCount: Int {
+        actualExistingPhotosCount + capturedPhotos.filter { $0.isUploaded }.count
+    }
     
     // Photo service for API calls
     private let photoService = PhotoService.shared
@@ -98,6 +106,25 @@ struct RoomCameraView: View {
                         isCameraActive = true
                     },
                     secondaryButton: .cancel()
+                )
+            case .nextConfirmation:
+                return Alert(
+                    title: Text("Save Photo?"),
+                    message: Text("Do you want to save the current photo before proceeding?"),
+                    primaryButton: .default(Text("Save")) {
+                        if let photo = currentPhoto {
+                            navigateAfterSave = true
+                            saveAndUploadPhoto(photo)
+                        }
+                    },
+                    secondaryButton: .cancel(Text("Don't Save")) {
+                        // Proceed without saving, only if we have at least one saved photo existing
+                        if savedPhotosCount > 0 {
+                            navigateToEvaluation()
+                        } else {
+                            alertItem = .error(message: "Please capture and save at least one photo before proceeding.")
+                        }
+                    }
                 )
             }
         }
@@ -223,15 +250,15 @@ struct RoomCameraView: View {
                                         .frame(width: 60, height: 60)
                                 )
                         }
-                        .disabled(capturedPhotos.count >= (maxPhotos - actualExistingPhotosCount))
-                        .opacity(capturedPhotos.count >= (maxPhotos - actualExistingPhotosCount) ? 0.5 : 1)
+                        .disabled(savedPhotosCount >= maxPhotos)
+                        .opacity(savedPhotosCount >= maxPhotos ? 0.5 : 1)
                         
                         Spacer()
                     }
                     .padding(.bottom, 30)
                     
-                    // Photo count indicator
-                    Text("\(actualExistingPhotosCount + capturedPhotos.count)/\(maxPhotos) Photos")
+                    // Photo count indicator (only count saved photos)
+                    Text("\(savedPhotosCount)/\(maxPhotos) Photos")
                         .foregroundColor(.white)
                         .font(.caption)
                         .padding(.bottom, 10)
@@ -325,16 +352,10 @@ struct RoomCameraView: View {
                         .cornerRadius(10)
                     }
                     
-                    // Next button: go to Evaluation screen without saving photo
+                    // Next button: confirm save or proceed
                     Button(action: {
-                        // Stop camera session before navigating
-                        cameraService.stopSession()
-                        compassService.stopUpdates()
-                        
-                        // Close camera and navigate to evaluation
-                        isCameraActive = false
-                        currentPhoto = nil
-                        showEvaluation = true
+                        // Ask user whether to save current photo first
+                        alertItem = .nextConfirmation
                     }) {
                         VStack {
                             Image(systemName: "arrow.right")
@@ -545,8 +566,8 @@ struct RoomCameraView: View {
     }
     
     private func capturePhotoWithCompass() {
-        // Check if we've reached the maximum number of photos
-        guard capturedPhotos.count < maxPhotos else {
+        // Check if we've reached the maximum number of photos (count only saved photos)
+        guard savedPhotosCount < maxPhotos else {
             alertItem = .error(message: "Maximum number of photos (\(maxPhotos)) reached.")
             return
         }
@@ -569,6 +590,17 @@ struct RoomCameraView: View {
                 self.isCameraActive = false
             }
         }
+    }
+    
+    private func navigateToEvaluation() {
+        // Stop camera session before navigating
+        cameraService.stopSession()
+        compassService.stopUpdates()
+        
+        // Close camera and navigate to evaluation
+        isCameraActive = false
+        currentPhoto = nil
+        showEvaluation = true
     }
     
     private func saveAndUploadPhoto(_ photo: UIImage) {
@@ -612,9 +644,16 @@ struct RoomCameraView: View {
                                 DispatchQueue.main.async {
                                     self.capturedPhotos[photoIndex].isUploaded = true
                                     
-                                    // If we've reached remaining slots, dismiss the camera view
-                                    if self.capturedPhotos.count >= (self.maxPhotos - self.existingPhotosCount) {
-                                        self.presentationMode.wrappedValue.dismiss()
+                                    // If user tapped Next and saved, navigate now. Otherwise, stay in camera.
+                                    if navigateAfterSave {
+                                        navigateAfterSave = false
+                                        navigateToEvaluation()
+                                        return
+                                    }
+                                    
+                                    // If we've reached remaining slots, go to evaluation
+                                    if self.capturedPhotos.count >= (self.maxPhotos - self.actualExistingPhotosCount) {
+                                        self.navigateToEvaluation()
                                     }
                                 }
                             } catch {
@@ -647,10 +686,8 @@ struct RoomCameraView: View {
                 // Restart camera session
                 self.setupCamera()
             } else {
-                // If this was the last allowed photo, dismiss the camera view
-                self.cameraService.stopSession()
-                self.compassService.stopUpdates()
-                self.presentationMode.wrappedValue.dismiss()
+                // If this was the last allowed photo, go to evaluation screen
+                self.navigateToEvaluation()
             }
         }
     }

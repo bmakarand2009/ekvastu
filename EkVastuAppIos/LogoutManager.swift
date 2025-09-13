@@ -49,8 +49,14 @@ class LogoutManager {
             AuthenticationManager.shared.signOut()
             print("✓ Reset authentication state")
             
-            // Call completion handler on main thread after everything is done
-            completion()
+            // Clear any pending alerts
+            NotificationCenter.default.post(name: NSNotification.Name("ClearAllAlerts"), object: nil)
+            
+            // Add a small delay to ensure all cleanup is complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Call completion handler on main thread after everything is done
+                completion()
+            }
         }
     }
 }

@@ -59,6 +59,24 @@ struct HomeAnalyzeView: View {
         return allRooms.map { $0.name }
     }
     
+    // Initialize notification observer
+    init(selectedPropertyType: String, propertyId: String) {
+        self.selectedPropertyType = selectedPropertyType
+        self.propertyId = propertyId
+        setupNotificationObserver()
+    }
+    
+    // Set up notification observer to handle alert clearing
+    private func setupNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ClearAllAlerts"), object: nil, queue: .main) { notification in
+            DispatchQueue.main.async {
+                // Clear any active alerts
+                self.showAlert = false
+                self.alertMessage = ""
+            }
+        }
+    }
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {

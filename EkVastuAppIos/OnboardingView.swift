@@ -24,6 +24,12 @@ struct OnboardingView: View {
             }
         } else if isOnboardingComplete {
             ContentView()
+                .onAppear {
+                    // Clear any pending alerts from previous sessions
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: NSNotification.Name("ClearAllAlerts"), object: nil)
+                    }
+                }
         } else {
             ZStack {
                 // Background color
