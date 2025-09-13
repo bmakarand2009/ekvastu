@@ -403,7 +403,7 @@ struct HomeAnalyzeView: View {
             Image("headerimage")
                 .resizable()                 // Allow scaling
                 .scaledToFit()               // Keep aspect ratio within frame
-                .frame(width: 40, height: 40)
+                .frame(width: 80, height: 80)
                 .clipped()
             
             Spacer()

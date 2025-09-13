@@ -44,7 +44,7 @@ struct CreateAccountPage: View {
                 Image("headerimage")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 30, height: 30)
+                    .frame(width: 80, height: 80)
                     .padding(.top, 30)
                 
                  
