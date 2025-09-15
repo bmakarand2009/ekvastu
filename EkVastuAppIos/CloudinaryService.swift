@@ -463,6 +463,11 @@ class CloudinaryService: ObservableObject {
         
         request.httpBody = httpBody
         
+        print("🌐 Making direct POST request to: \(url.absoluteString)")
+        
+        // Print curl command for debugging
+        NetworkService.shared.printCurlCommand(for: request)
+        
         let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -512,6 +517,11 @@ class CloudinaryService: ObservableObject {
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: deleteBody)
+        
+        print("🌐 Making direct DELETE request to: \(url.absoluteString)")
+        
+        // Print curl command for debugging
+        NetworkService.shared.printCurlCommand(for: request)
         
         let (data, response) = try await session.data(for: request)
         
@@ -826,7 +836,14 @@ class CloudinaryService: ObservableObject {
             throw CloudinaryError.invalidResponse
         }
         
-        let (data, response) = try await session.data(from: url)
+        print("🌐 Making direct GET request to: \(url.absoluteString)")
+        
+        let request = URLRequest(url: url)
+        
+        // Print curl command for debugging
+        NetworkService.shared.printCurlCommand(for: request)
+        
+        let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {

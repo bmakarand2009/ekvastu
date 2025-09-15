@@ -193,6 +193,12 @@ class ProfileService: ObservableObject {
         }
         
         print("🌐 Making direct POST request to: \(url.absoluteString)")
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        NetworkService.shared.printCurlCommand(for: urlRequest)
         
         URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -293,6 +299,12 @@ class ProfileService: ObservableObject {
         }
         
         print("🌐 Making direct PUT request to: \(url.absoluteString)")
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        NetworkService.shared.printCurlCommand(for: urlRequest)
         
         URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             DispatchQueue.main.async {

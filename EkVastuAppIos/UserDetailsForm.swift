@@ -2,6 +2,7 @@ import SwiftUI
 import Firebase
 import UserNotifications
 import FirebaseAuth
+// LogoutManager is a file in the project, not a module
 
 struct UserDetailsForm: View {
     // Force refresh parameter to ensure profile API is called when navigating back
@@ -287,6 +288,22 @@ struct UserDetailsForm: View {
                                 EmptyView()
                             }
                             
+                            // Sign Out Button
+                            Button(action: {
+                                alertMessage = "Are you sure you want to logout?"
+                                showAlert = true
+                            }) {
+                                Text("Sign Out")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                            
                             // Add padding at the bottom to ensure content doesn't get cut off
                             Spacer().frame(height: 50)
                         }
@@ -301,9 +318,11 @@ struct UserDetailsForm: View {
                         title: Text("Logout"),
                         message: Text("Are you sure you want to logout?"),
                         primaryButton: .destructive(Text("Logout")) {
-                            // Perform logout
-                            authManager.signOut()
-                            navigateToOnboarding = true
+                            // Perform logout with complete data cleanup
+                            LogoutManager.shared.logout {
+                                // Navigate to onboarding screen after logout
+                                navigateToOnboarding = true
+                            }
                         },
                         secondaryButton: .cancel()
                     )

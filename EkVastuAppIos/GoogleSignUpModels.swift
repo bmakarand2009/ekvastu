@@ -3,7 +3,8 @@ import Foundation
 // MARK: - Google Sign Up Request Model
 struct GoogleSignUpRequest: Codable {
     let idToken: String
-    let tenantId: String
+    let tid: String
+    let orgId: String
     let name: String
     let lastName: String?
     let phone: String?
@@ -11,13 +12,15 @@ struct GoogleSignUpRequest: Codable {
     // Initialize with required and optional parameters
     init(
         idToken: String,
-        tenantId: String,
+        tenantId: String, // Parameter name remains the same for compatibility
+        orgId: String = "PostFix", // Default value for orgId
         name: String,
         lastName: String? = nil,
         phone: String? = nil
     ) {
         self.idToken = idToken
-        self.tenantId = tenantId
+        self.tid = tenantId // Map tenantId parameter to tid property
+        self.orgId = orgId
         self.name = name
         self.lastName = lastName
         self.phone = phone

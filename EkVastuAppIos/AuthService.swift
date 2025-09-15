@@ -15,6 +15,8 @@ class AuthService: ObservableObject {
     
     private init() {}
     
+    // Use NetworkService's printCurlCommand function
+    
     // MARK: - Helper Methods
     private func extractUserFriendlyErrorMessage(from error: NetworkError) -> String {
         switch error {
@@ -46,11 +48,11 @@ class AuthService: ObservableObject {
     
     // MARK: - Sign In Method (with automatic tenant ping)
     func signIn(
-        userId: String,
+        email: String,
         password: String,
         completion: @escaping (Result<SignInResponse, NetworkError>) -> Void
     ) {
-        print("🔐 Starting sign in process for user: \(userId)")
+        print("🔐 Starting sign in process for user: \(email)")
         print("🏢 First getting tenant info to retrieve TID...")
         
         isLoading = true
@@ -60,12 +62,12 @@ class AuthService: ObservableObject {
         getTenantInfo { [weak self] tenantResult in
             switch tenantResult {
             case .success(let tenantInfo):
-                print("✅ Tenant info retrieved, orgId: \(tenantInfo.orgId)")
+                print("✅ Tenant info retrieved, tenantId: \(tenantInfo.tenantId)")
                 
-                // Step 2: Use the orgId from tenant response for signin
+                // Step 2: Use the tid from tenant response for signin
                 self?.performSignIn(
-                    orgId: tenantInfo.orgId,
-                    userId: userId,
+                    tid: tenantInfo.tenantId,
+                    email: email,
                     password: password,
                     completion: completion
                 )
@@ -83,18 +85,18 @@ class AuthService: ObservableObject {
     
     // MARK: - Internal Sign In Method
     private func performSignIn(
-        orgId: String,
-        userId: String,
+        tid: String,
+        email: String,
         password: String,
         completion: @escaping (Result<SignInResponse, NetworkError>) -> Void
     ) {
-        print("🔐 Performing sign in with orgId: \(orgId)")
+        print("🔐 Performing sign in with tid: \(tid)")
         
         let request = SignInRequest(
-            orgId: orgId,
-            userId: userId,
+            tid: tid,
+            email: email,
             password: password,
-            rememberMe: true
+            authType: "email"
         )
         
         guard let requestData = try? JSONEncoder().encode(request) else {
@@ -279,6 +281,18 @@ class AuthService: ObservableObject {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         
         print("🌐 Making direct POST request to: \(url.absoluteString)")
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        networkService.printCurlCommand(for: urlRequest)
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        networkService.printCurlCommand(for: urlRequest)
         
         URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -422,6 +436,7 @@ class AuthService: ObservableObject {
         let request = GoogleSignUpRequest(
             idToken: idToken,
             tenantId: tenantId,
+            orgId: "PostFix", // Adding required orgId parameter
             name: name,
             lastName: lastName,
             phone: phone
@@ -446,6 +461,12 @@ class AuthService: ObservableObject {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         
         print("🌐 Making direct POST request to: \(url.absoluteString)")
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        networkService.printCurlCommand(for: urlRequest)
         
         URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -477,10 +498,23 @@ class AuthService: ObservableObject {
                 // Check if response is JSON or HTML
                 if let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type"),
                    contentType.contains("text/html") {
-                    // Handle HTML response (likely an error page)
-                    print("❌ Received HTML response instead of JSON")
-                    self?.errorMessage = "Server returned HTML instead of JSON. Please try again later."
-                    completion(.failure(.serverError(httpResponse.statusCode, "Server returned HTML instead of JSON")))
+                    // Handle HTML response (likely a login redirect)
+                    print("❌ Received HTML login page instead of JSON - API requires authentication")
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("Raw HTML response: \(responseString.prefix(500))...")
+                    }
+                    self?.errorMessage = "Authentication required. The signup endpoint is redirecting to login. Please contact support."
+                    completion(.failure(.serverError(httpResponse.statusCode, "API endpoint requires authentication for signup")))
+                    return
+                }
+                
+                // Also check if the response data looks like HTML even without proper content-type
+                if let responseString = String(data: data, encoding: .utf8),
+                   responseString.lowercased().contains("<!doctype html") || responseString.lowercased().contains("<html") {
+                    print("❌ Detected HTML response without proper content-type header")
+                    print("Raw HTML response: \(responseString.prefix(500))...")
+                    self?.errorMessage = "Server configuration error. The signup endpoint is returning a login page instead of processing the request."
+                    completion(.failure(.serverError(httpResponse.statusCode, "Server returned HTML login page instead of JSON")))
                     return
                 }
                 
@@ -521,9 +555,9 @@ class AuthService: ObservableObject {
     
     // MARK: - Sign In with Async/Await
     @MainActor
-    func signIn(userId: String, password: String) async throws -> SignInResponse {
+    func signIn(email: String, password: String) async throws -> SignInResponse {
         return try await withCheckedThrowingContinuation { continuation in
-            signIn(userId: userId, password: password) { result in
+            signIn(email: email, password: password) { result in
                 continuation.resume(with: result)
             }
         }
@@ -652,7 +686,7 @@ class AuthService: ObservableObject {
     private func performSignUp(
         name: String,
         email: String,
-        tenantId: String,
+        tenantId: String, // Parameter name remains the same for compatibility
         lastName: String?,
         phone: String?,
         referral: String?,
@@ -672,7 +706,8 @@ class AuthService: ObservableObject {
         let request = SignUpRequest(
             name: name,
             email: email,
-            tenantId: tenantId,
+            tid: tenantId, // Using tenantId parameter but passing it as tid
+            orgId: "PostFix", // Adding required orgId parameter
             lastName: lastName,
             phone: phone,
             referral: referral,
@@ -719,14 +754,24 @@ class AuthService: ObservableObject {
             },
             receiveValue: { [weak self] (response: SignUpResponse) in
                 print("📥 Sign up response received")
-                print("Success: \(response.success)")
-                if let message = response.message {
-                    print("Message: \(message)")
+                print("Email: \(response.email)")
+                print("Role: \(response.role)")
+                print("Name: \(response.contact.fullName)")
+                print("Access Token: \(response.accessToken.prefix(20))...")
+                
+                // Store tokens from signup response
+                Task { @MainActor in
+                    TokenManager.shared.storeTokens(
+                        accessToken: response.accessToken,
+                        refreshToken: response.refreshToken ?? ""
+                    )
                 }
-                if let userData = response.data {
-                    print("User ID: \(userData.id ?? "N/A")")
-                    print("Email: \(userData.email ?? "N/A")")
-                    print("Name: \(userData.name ?? "N/A")")
+                
+                // Update tenant configuration if available
+                if let tenant = response.tenant {
+                    Task { @MainActor in
+                        self?.tenantConfig.updateSignInTenant(tenant)
+                    }
                 }
                 
                 self?.errorMessage = nil

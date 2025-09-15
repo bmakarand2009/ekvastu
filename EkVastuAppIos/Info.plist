@@ -28,7 +28,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<true/>
+	<false/>
 	<key>GIDClientID</key>
 	<string>632759342287-f8r3masop1ijr8r60tb01t5d13e5shqe.apps.googleusercontent.com</string>
 	<key>GMSApiKey</key>

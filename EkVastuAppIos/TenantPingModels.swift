@@ -88,7 +88,7 @@ struct TenantPingResponse: Codable {
         let logo: String
         let logoWidth: Int
         let logoHeight: Int
-        let isScaleLogo: Bool
+        let isScaleLogo: Bool?
         let favIcon: String
         let headerColor: String
         let pageScript: String
@@ -97,9 +97,32 @@ struct TenantPingResponse: Codable {
         let googleId: String
         let isShowFooter: Bool
         let footerInfo: String
-        let tosLink: String
-        let privacyPolicyLink: String
-        let favIconUrl: String
+        let tosLink: String?
+        let privacyPolicyLink: String?
+        let favIconUrl: String?
+        
+        private enum CodingKeys: String, CodingKey {
+            case logo, logoWidth, logoHeight, isScaleLogo, favIcon, headerColor, pageScript, title, seoDescription, googleId, isShowFooter, footerInfo, tosLink, privacyPolicyLink, favIconUrl
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            logo = try container.decodeIfPresent(String.self, forKey: .logo) ?? ""
+            logoWidth = try container.decodeIfPresent(Int.self, forKey: .logoWidth) ?? 0
+            logoHeight = try container.decodeIfPresent(Int.self, forKey: .logoHeight) ?? 0
+            isScaleLogo = try container.decodeIfPresent(Bool.self, forKey: .isScaleLogo)
+            favIcon = try container.decodeIfPresent(String.self, forKey: .favIcon) ?? ""
+            headerColor = try container.decodeIfPresent(String.self, forKey: .headerColor) ?? ""
+            pageScript = try container.decodeIfPresent(String.self, forKey: .pageScript) ?? ""
+            title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+            seoDescription = try container.decodeIfPresent(String.self, forKey: .seoDescription) ?? ""
+            googleId = try container.decodeIfPresent(String.self, forKey: .googleId) ?? ""
+            isShowFooter = try container.decodeIfPresent(Bool.self, forKey: .isShowFooter) ?? false
+            footerInfo = try container.decodeIfPresent(String.self, forKey: .footerInfo) ?? ""
+            tosLink = try container.decodeIfPresent(String.self, forKey: .tosLink)
+            privacyPolicyLink = try container.decodeIfPresent(String.self, forKey: .privacyPolicyLink)
+            favIconUrl = try container.decodeIfPresent(String.self, forKey: .favIconUrl)
+        }
     }
     
     struct Form: Codable {
@@ -112,10 +135,10 @@ struct TenantPingResponse: Codable {
         let guId: String
         let header: String?
         let isCustomForm: Bool
-        let isEmail: Bool
+        let isEmail: Bool?
         let isMasterForm: Bool?
-        let isName: Bool
-        let isPhone: Bool
+        let isName: Bool?
+        let isPhone: Bool?
         let isPublishToStudent: Bool
         let isShowAddress: Bool
         let isShowBirthdate: Bool
@@ -123,9 +146,40 @@ struct TenantPingResponse: Codable {
         let isShowOnWebsite: Bool
         let isSignRequired: Bool
         let name: String
-        let subHeader: FormContent
+        let subHeader: FormContent?
         let tid: String
         let type: String
+        
+        private enum CodingKeys: String, CodingKey {
+            case afterForm, beforeForm, customFields, customFormName, date, formType, guId, header, isCustomForm, isEmail, isMasterForm, isName, isPhone, isPublishToStudent, isShowAddress, isShowBirthdate, isShowEmergencyContact, isShowOnWebsite, isSignRequired, name, subHeader, tid, type
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            afterForm = try container.decodeIfPresent(FormContent.self, forKey: .afterForm)
+            beforeForm = try container.decodeIfPresent(FormContent.self, forKey: .beforeForm)
+            customFields = try container.decodeIfPresent([CustomFieldWrapper].self, forKey: .customFields)
+            customFormName = try container.decodeIfPresent(String.self, forKey: .customFormName)
+            date = try container.decode(Int.self, forKey: .date)
+            formType = try container.decodeIfPresent(String.self, forKey: .formType)
+            guId = try container.decode(String.self, forKey: .guId)
+            header = try container.decodeIfPresent(String.self, forKey: .header)
+            isCustomForm = try container.decode(Bool.self, forKey: .isCustomForm)
+            isEmail = try container.decodeIfPresent(Bool.self, forKey: .isEmail)
+            isMasterForm = try container.decodeIfPresent(Bool.self, forKey: .isMasterForm)
+            isName = try container.decodeIfPresent(Bool.self, forKey: .isName) ?? true
+            isPhone = try container.decodeIfPresent(Bool.self, forKey: .isPhone)
+            isPublishToStudent = try container.decode(Bool.self, forKey: .isPublishToStudent)
+            isShowAddress = try container.decode(Bool.self, forKey: .isShowAddress)
+            isShowBirthdate = try container.decode(Bool.self, forKey: .isShowBirthdate)
+            isShowEmergencyContact = try container.decode(Bool.self, forKey: .isShowEmergencyContact)
+            isShowOnWebsite = try container.decode(Bool.self, forKey: .isShowOnWebsite)
+            isSignRequired = try container.decode(Bool.self, forKey: .isSignRequired)
+            name = try container.decode(String.self, forKey: .name)
+            subHeader = try container.decodeIfPresent(FormContent.self, forKey: .subHeader)
+            tid = try container.decode(String.self, forKey: .tid)
+            type = try container.decode(String.self, forKey: .type)
+        }
         
         struct FormContent: Codable {
             let description: String

@@ -2,10 +2,17 @@ import Foundation
 
 // MARK: - Sign In Request Model
 struct SignInRequest: Codable {
-    let orgId: String
-    let userId: String
+    let tid: String
+    let email: String
     let password: String
-    let rememberMe: Bool
+    let authType: String
+    
+    enum CodingKeys: String, CodingKey {
+        case tid
+        case email
+        case password
+        case authType
+    }
 }
 
 // MARK: - Sign In Response Model

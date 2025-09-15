@@ -318,7 +318,7 @@ struct SignInPage: View {
         
         // Use backend API for authentication (automatically gets TID from tenant ping)
         authService.signIn(
-            userId: email,
+            email: email,
             password: password
         ) { result in
             DispatchQueue.main.async {

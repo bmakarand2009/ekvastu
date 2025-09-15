@@ -17,8 +17,8 @@ struct EkVastuAppIosApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     init() {
-        // Configure Firebase
-        FirebaseApp.configure()
+        // Firebase is already configured in AppDelegate
+        // Do not initialize Firebase here to avoid duplicate initialization
         
         // Force Light Mode - Using the newer API for iOS 15+
         if #available(iOS 15.0, *) {

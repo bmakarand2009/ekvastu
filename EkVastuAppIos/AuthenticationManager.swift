@@ -1,7 +1,7 @@
 import SwiftUI
 import Firebase
-import GoogleSignIn
 import FirebaseAuth
+import GoogleSignIn
 
 class AuthenticationManager: ObservableObject {
     @Published var user: User?
@@ -16,6 +16,14 @@ class AuthenticationManager: ObservableObject {
     static let shared = AuthenticationManager()
     
     init() {
+        // Set up Firebase auth state listener
+        Auth.auth().addStateDidChangeListener { [weak self] (auth, user) in
+            DispatchQueue.main.async {
+                self?.user = user
+                self?.isAuthenticated = user != nil
+            }
+        }
+        
         // Check Firebase auth state and clear local data if account doesn't exist
         checkFirebaseAuthState()
     }
@@ -63,6 +71,21 @@ class AuthenticationManager: ObservableObject {
         print("Firebase account valid - proceeding with authentication")
         self.user = user
         self.isAuthenticated = true
+        
+        // Set up notification observer for Google Sign-In restoration
+        NotificationCenter.default.addObserver(forName: Notification.Name("GoogleSignInRestored"), object: nil, queue: .main) { [weak self] notification in
+            if let googleUser = notification.userInfo?["user"] as? GIDGoogleUser,
+               let idToken = googleUser.idToken?.tokenString {
+                print("Received Google Sign-In restoration notification")
+                
+                // Firebase Auth is already handled in AppDelegate
+                // Just update the authentication state if needed
+                if self?.user == nil {
+                    self?.user = Auth.auth().currentUser
+                    self?.isAuthenticated = self?.user != nil
+                }
+            }
+        }
     }
     
     // Verify with fresh token

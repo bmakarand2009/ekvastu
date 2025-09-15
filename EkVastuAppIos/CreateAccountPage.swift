@@ -358,10 +358,11 @@ struct CreateAccountPage: View {
                 
                 switch result {
                 case .success(let response):
-                    if response.success {
+                    // Consider successful if we have an access token
+                    if !response.accessToken.isEmpty {
                         print("✅ Backend signup successful")
-                        print("User: \(response.data?.name ?? "N/A")")
-                        print("Email: \(response.data?.email ?? "N/A")")
+                        print("User: \(response.contact.fullName)")
+                        print("Email: \(response.email)")
                         
                         // Set authentication state
                         self.authManager.isAuthenticated = true
@@ -369,7 +370,7 @@ struct CreateAccountPage: View {
                         // Navigate to appropriate screen
                         self.showHomeView = true
                     } else {
-                        self.errorMessage = response.message ?? "Signup failed"
+                        self.errorMessage = "Signup failed: No access token received"
                     }
                     
                 case .failure(let error):
@@ -522,7 +523,7 @@ struct CreateAccountPage: View {
     private func performBackendSigninAfterGoogle(email: String) {
         // If signup fails because user exists, try signin
         AuthService.shared.signIn(
-            userId: email,
+            email: email,
             password: "google_auth_placeholder" // This won't work, but we'll handle the error
         ) { result in
             // Process result on main thread
@@ -592,7 +593,7 @@ struct CreateAccountPage: View {
     private func storeGoogleUserDataLocally(response: SignUpResponse, googleUser: User) {
         // Create UserDetails object from Google user info
         let userDetails = UserDetails(
-            name: googleUser.displayName ?? response.data?.name ?? "User",
+            name: googleUser.displayName ?? response.contact.fullName,
             dateOfBirth: Date(), // Default value, can be updated later
             timeOfBirth: Date(), // Default value, can be updated later
             placeOfBirth: "" // Default value, can be updated later
@@ -608,12 +609,12 @@ struct CreateAccountPage: View {
         }
         
         // Store additional user info
-        UserDefaults.standard.set(response.data?.id ?? "", forKey: "user_id")
-        UserDefaults.standard.set(response.data?.email ?? "", forKey: "user_email")
-        UserDefaults.standard.set(googleUser.displayName ?? response.data?.name ?? "", forKey: "user_name")
-        UserDefaults.standard.set(googleUser.phoneNumber ?? "", forKey: "user_phone")
-        UserDefaults.standard.set(response.data?.status ?? "", forKey: "user_role")
-        UserDefaults.standard.set(googleUser.photoURL?.absoluteString ?? "", forKey: "user_picture")
+        UserDefaults.standard.set(response.contact.id, forKey: "user_id")
+        UserDefaults.standard.set(response.email, forKey: "user_email")
+        UserDefaults.standard.set(googleUser.displayName ?? response.contact.fullName, forKey: "user_name")
+        UserDefaults.standard.set(googleUser.phoneNumber ?? response.contact.phone ?? "", forKey: "user_phone")
+        UserDefaults.standard.set(response.role, forKey: "user_role")
+        UserDefaults.standard.set(googleUser.photoURL?.absoluteString ?? response.contact.picture ?? "", forKey: "user_picture")
         UserDefaults.standard.synchronize()
     }
     

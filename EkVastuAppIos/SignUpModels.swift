@@ -6,7 +6,8 @@ struct SignUpRequest: Codable {
     let lastName: String?
     let email: String
     let phone: String?
-    let tenantId: String
+    let tid: String
+    let orgId: String
     let referral: String?
     let interestedIn: String?
     let leadSource: String?
@@ -22,7 +23,8 @@ struct SignUpRequest: Codable {
     init(
         name: String,
         email: String,
-        tenantId: String,
+        tid: String,
+        orgId: String = "PostFix", // Default value for orgId
         lastName: String? = nil,
         phone: String? = nil,
         referral: String? = nil,
@@ -38,7 +40,8 @@ struct SignUpRequest: Codable {
     ) {
         self.name = name
         self.email = email
-        self.tenantId = tenantId
+        self.tid = tid
+        self.orgId = orgId
         self.lastName = lastName
         self.phone = phone
         self.referral = referral
@@ -56,17 +59,23 @@ struct SignUpRequest: Codable {
 
 // MARK: - Sign Up Response Model
 struct SignUpResponse: Codable {
-    let success: Bool
-    let message: String?
-    let data: SignUpData?
-    let error: String?
+    let accessToken: String
+    let refreshToken: String?
+    let email: String
+    let isNewProfile: Bool
+    let role: String
+    let contact: Contact
+    let tenant: Tenant?
+    let orgList: [String]?
     
-    struct SignUpData: Codable {
-        let id: String?
-        let email: String?
-        let name: String?
-        let tenantId: String?
-        let createdAt: String?
-        let status: String?
+    private enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+        case email
+        case isNewProfile
+        case role
+        case contact
+        case tenant
+        case orgList
     }
 }

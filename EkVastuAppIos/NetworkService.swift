@@ -3,9 +3,15 @@ import Combine
 
 // MARK: - API Configuration
 struct APIConfig {
+    //for prod
     static let baseURL = "https://api.wajooba.xyz"
+    
+    //static let baseURL = "https://api.wajooba.xyz"
     static let ekshaktiBaseURL = "https://ekshakti-portal.onrender.com"
-    static let tenantName = "marksampletest"
+    
+    static let tenantName = "m300"
+    //for production
+    //static let tenantName = "ekshakti"
     static let timeout: TimeInterval = 30.0
 }
 
@@ -43,13 +49,13 @@ enum APIEndpoint {
     var path: String {
         switch self {
         case .signin:
-            return "/smobile/tenant/plogin"
+            return "/public/user/signin"
         case .signup:
             return "/smobile/rest/signup"
         case .googleLogin:
             return "/smobile/rest/glogin"
         case .tenantPing:
-            return "/snode/tenant/ping?name=\(APIConfig.tenantName)"
+            return "/smobile/tenant/public/ping?name=\(APIConfig.tenantName)"
             
         // Profile Management
         case .checkProfile, .createProfile, .updateProfile:
@@ -146,6 +152,38 @@ class NetworkService: ObservableObject {
         config.timeoutIntervalForResource = APIConfig.timeout
     }
     
+    // MARK: - Print cURL Command
+    func printCurlCommand(for request: URLRequest) {
+        guard let url = request.url else { return }
+        
+        var components = ["curl -v"]
+        
+        // Add HTTP method if not GET
+        if let method = request.httpMethod, method != "GET" {
+            components.append("-X \(method)")
+        }
+        
+        // Add headers
+        request.allHTTPHeaderFields?.forEach { key, value in
+            let escapedValue = value.replacingOccurrences(of: "\"", with: "\\\"")
+            components.append("-H \"\(key): \(escapedValue)\"")
+        }
+        
+        // Add request body if present
+        if let httpBody = request.httpBody, let bodyString = String(data: httpBody, encoding: .utf8) {
+            let escapedBody = bodyString.replacingOccurrences(of: "\"", with: "\\\"")
+            components.append("-d \"\(escapedBody)\"")
+        }
+        
+        // Add URL
+        components.append("\"\(url.absoluteString)\"")
+        
+        // Join all components and print
+        let curlCommand = components.joined(separator: " ")
+        print("📋 cURL command:\n\(curlCommand)")
+    }
+    
+    
     // MARK: - Generic Request Method
     func request<T: Codable>(
         endpoint: APIEndpoint,
@@ -184,6 +222,9 @@ class NetworkService: ObservableObject {
         if let bodyData = body, let bodyString = String(data: bodyData, encoding: .utf8) {
             print("📤 Request body: \(bodyString)")
         }
+        
+        // Print curl command for debugging
+        printCurlCommand(for: request)
         
         return session.dataTaskPublisher(for: request)
             .tryMap { data, response -> Data in
@@ -283,6 +324,12 @@ class NetworkService: ObservableObject {
         }
         
         print("🌐 Making \(method.rawValue) request to: \(url)")
+        if let bodyData = body, let bodyString = String(data: bodyData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        printCurlCommand(for: request)
         
         return session.dataTaskPublisher(for: request)
             .tryMap { data, response -> Data in
