@@ -451,6 +451,14 @@ class CloudinaryService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         
+        // Add Basic Authentication for signed presets
+        let credentials = "\(apiKey):\(apiSecret)"
+        if let credentialsData = credentials.data(using: .utf8) {
+            let base64Credentials = credentialsData.base64EncodedString()
+            request.setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
+            print("🔐 Adding authentication for signed upload preset")
+        }
+        
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
@@ -807,11 +815,23 @@ class CloudinaryService: ObservableObject {
         print("📤 CloudinaryService: Creating multipart body")
         print("   - Upload Preset: \(preset)")
         print("   - Folder: \(folder)")
+        print("   - API Key: \(apiKey)")
         
         // Add upload preset
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"upload_preset\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(preset)\r\n".data(using: .utf8)!)
+        
+        // Add API key for signed presets
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"api_key\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(apiKey)\r\n".data(using: .utf8)!)
+        
+        // Add timestamp for signed presets
+        let timestamp = Int(Date().timeIntervalSince1970)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"timestamp\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(timestamp)\r\n".data(using: .utf8)!)
         
         // Add folder
         body.append("--\(boundary)\r\n".data(using: .utf8)!)

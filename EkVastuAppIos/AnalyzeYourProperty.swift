@@ -32,7 +32,7 @@ struct AnalyzeYourProperty: View {
             ConsultView()
                 .tabItem {
                     Image(systemName: "message.fill")
-                    Text("Consult")
+                    Text("Coffee With Jaya")
                 }
                 .tag(3)
         }

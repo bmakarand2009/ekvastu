@@ -36,7 +36,7 @@ class TenantConfigManager: ObservableObject {
         if let preset = signInTenant?.cloudinaryPreset, !preset.isEmpty {
             return preset
         }
-        return "mc2bjvfu" // fallback preset
+        return "qjdp0fft" // Updated fallback preset to ml_default which is commonly available
     }
     
     var cloudinaryFolder: String {

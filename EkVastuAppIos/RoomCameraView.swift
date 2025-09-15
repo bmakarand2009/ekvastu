@@ -177,6 +177,14 @@ struct RoomCameraView: View {
                     .padding(.bottom, 10)
                     .background(Color.black.opacity(0.5))
                     
+                    // Max photos allowed text
+                    Text("Max 4 photos are allowed")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.black.opacity(0.5))
+                    
                     // Thumbnails row if there are captured images
                     if !capturedPhotos.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {

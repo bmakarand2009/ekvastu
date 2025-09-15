@@ -19,6 +19,7 @@ struct AddressSearchView: View {
                         .foregroundColor(.gray)
                     
                     TextField("Search for address", text: $searchText)
+                        .accentColor(.black) // Make cursor visible
                         .onChange(of: searchText) { newValue in
                             if !newValue.isEmpty && newValue.count > 2 {
                                 fetchPredictions(for: newValue)

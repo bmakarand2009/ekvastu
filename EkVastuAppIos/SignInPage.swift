@@ -6,7 +6,6 @@ import GoogleSignIn
 struct SignInPage: View {
     @State private var email: String = ""
     @State private var password: String = ""
-    @State private var agreedToTerms: Bool = false
     @State private var showHomeView = false
     @State private var showForgotPassword = false
     @State private var showCreateAccount = false
@@ -70,12 +69,18 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .accentColor(.gray.opacity(0.0))
+                            .accentColor(.black) // Make cursor visible
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .onChange(of: email) { _ in
                                 emailEdited = true
                                 validateEmail()
+                            }
+                            .onAppear {
+                                // Focus on this field when view appears
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+                                }
                             }
                         
                         if let error = emailError, emailEdited {
@@ -100,7 +105,7 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(passwordError != nil && passwordEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .accentColor(.gray.opacity(0.0))
+                            .accentColor(.black) // Make cursor visible
                             .onChange(of: password) { _ in
                                 passwordEdited = true
                                 validatePassword()
@@ -187,34 +192,6 @@ struct SignInPage: View {
                                 .fill(Color.white)
                         ).padding(.horizontal)
                     
-                     
-
-                    // Terms and conditions checkbox
-                    HStack(alignment: .top) {
-                      
-                            ZStack {
-                                Rectangle()
-                                    .fill(agreedToTerms ? Color(hex: "#4A2511") : Color.white)
-                                    .frame(width: 24, height: 24)
-                                    .cornerRadius(4)
-                                
-                                if agreedToTerms {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 14, weight: .bold))
-                                }
-                            }
-                        
-                        
-                        Text("By signing in, you agree to our Terms of Service & Privacy Policy")
-                            .font(.system(size: 14))
-                            .padding(.leading, 5)
-                    }
-                    .onTapGesture {
-                        agreedToTerms.toggle()
-                    }
-                    
-                
                     // Don't have an account link
                     HStack {
                         Text("Don't have an account?")
@@ -265,7 +242,7 @@ struct SignInPage: View {
     
     private func formIsValid() -> Bool {
         return emailError == nil && passwordError == nil && 
-               !email.isEmpty && !password.isEmpty && agreedToTerms
+               !email.isEmpty && !password.isEmpty
     }
     
     private func validateEmail() {
@@ -299,15 +276,7 @@ struct SignInPage: View {
         validateEmail()
         validatePassword()
         
-        // Check if terms are agreed
-        if !agreedToTerms {
-            errorMessage = "Please agree to the Terms of Service & Privacy Policy"
-            return false
-        } else {
-            errorMessage = nil
-        }
-        
-        return emailError == nil && passwordError == nil && agreedToTerms
+        return emailError == nil && passwordError == nil
     }
     
     private func signInWithEmail() {
@@ -316,8 +285,8 @@ struct SignInPage: View {
         isLoading = true
         errorMessage = nil
         
-        // Use backend API for authentication (automatically gets TID from tenant ping)
-        authService.signIn(
+        // Use the new email login API
+        authService.emailLogin(
             email: email,
             password: password
         ) { result in
@@ -326,7 +295,7 @@ struct SignInPage: View {
                 
                 switch result {
                 case .success(let response):
-                    print("✅ Backend authentication successful")
+                    print("✅ Email login successful")
                     print("User: \(response.contact.fullName)")
                     print("Email: \(response.email)")
                     print("Role: \(response.role)")
@@ -341,7 +310,7 @@ struct SignInPage: View {
                     self.showHomeView = true
                     
                 case .failure(let error):
-                    print("❌ Backend authentication failed: \(error.localizedDescription)")
+                    print("❌ Email login failed: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
             }
@@ -405,10 +374,6 @@ struct SignInPage: View {
     }
     
     private func handleGoogleSignIn() {
-        if !agreedToTerms {
-            errorMessage = "Please agree to the Terms of Service & Privacy Policy"
-            return
-        }
         
         isLoading = true
         errorMessage = nil
@@ -567,9 +532,16 @@ struct ForgotPasswordView: View {
                     .padding(.horizontal)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
+                    .accentColor(.black) // Make cursor visible
                     .onChange(of: email) { _ in
                         emailEdited = true
                         validateEmail()
+                    }
+                    .onAppear {
+                        // Focus on this field when view appears
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+                        }
                     }
                 
                 if let error = emailError, emailEdited {

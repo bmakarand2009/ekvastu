@@ -586,6 +586,7 @@ struct HomeAnalyzeView: View {
             HStack {
                 TextField("Enter room name", text: $newRoomName)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .accentColor(.black) // Make cursor visible
                     .disabled(isLoadingRooms)
                 
                 Button(action: {

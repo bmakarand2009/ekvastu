@@ -5,7 +5,20 @@ struct CompassView: View {
     @State private var isActive = true // Always active by default
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
+            // Header with logo
+            HStack {
+                Spacer()
+                
+                Image("headerimage")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .padding(.top, 10)
+                
+                Spacer()
+            }
+            .padding(.bottom, 10)
             Text("Direction: \(compassService.direction)")
                 .font(.headline)
             

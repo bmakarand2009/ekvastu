@@ -10,6 +10,8 @@ struct APIConfig {
     static let ekshaktiBaseURL = "https://ekshakti-portal.onrender.com"
     
     static let tenantName = "m300"
+    static let tidDebug = "b5YA470P7r"
+    static let tidRelease = "e2EAVLLGzK"
     //for production
     //static let tenantName = "ekshakti"
     static let timeout: TimeInterval = 30.0
@@ -150,6 +152,16 @@ class NetworkService: ObservableObject {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = APIConfig.timeout
         config.timeoutIntervalForResource = APIConfig.timeout
+    }
+    
+    // MARK: - Tenant ID Helper
+    func getCurrentTenantId() -> String {
+        // If the base URL is api.wajooba.xyz, use tidDebug, otherwise use tidRelease
+        if APIConfig.baseURL.contains("api.wajooba.xyz") {
+            return APIConfig.tidDebug
+        } else {
+            return APIConfig.tidRelease
+        }
     }
     
     // MARK: - Print cURL Command

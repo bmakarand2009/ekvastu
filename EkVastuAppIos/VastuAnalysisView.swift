@@ -75,7 +75,7 @@ struct VastuAnalysisView: View {
                     NotificationCenter.default.post(name: NSNotification.Name("SwitchToConsultTab"), object: nil)
                     presentationMode.wrappedValue.dismiss()
                 }) {
-                    Text("Connect with Jaya")
+                    Text("Coffee with Jaya")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.vertical, 8)

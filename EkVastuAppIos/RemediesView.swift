@@ -226,7 +226,7 @@ struct RemedyDetailView: View {
                             // Open in-app browser with booking URL
                             showSafari = true
                         }) {
-                            Text("Book Consultation")
+                            Text("Coffee With Jaya")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
                                 .frame(width: 260, height: 40)

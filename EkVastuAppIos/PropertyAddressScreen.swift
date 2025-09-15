@@ -119,6 +119,7 @@ struct PropertyAddressScreen: View {
                             .padding(10)
                             .background(Color.white)
                             .cornerRadius(8)
+                            .accentColor(.black) // Make cursor visible
                         
                         // Pincode
                         Text("Pincode")
@@ -130,6 +131,7 @@ struct PropertyAddressScreen: View {
                             .padding(10)
                             .background(Color.white)
                             .cornerRadius(8)
+                            .accentColor(.black) // Make cursor visible
                             .keyboardType(.numberPad)
                         
                         // Property Type

@@ -72,10 +72,16 @@ struct CreateAccountPage: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(nameError != nil && nameEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                         )
-                        .accentColor(.gray.opacity(0.0))
+                        .accentColor(.black) // Make cursor visible
                         .onChange(of: name) { _ in
                             nameEdited = true
                             validateName()
+                        }
+                        .onAppear {
+                            // Focus on this field when view appears
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+                            }
                         }
                     
                     if let error = nameError, nameEdited {
@@ -100,7 +106,7 @@ struct CreateAccountPage: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                         )
-                        .accentColor(.gray.opacity(0.0))
+                        .accentColor(.black) // Make cursor visible
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .onChange(of: email) { _ in
@@ -137,8 +143,8 @@ struct CreateAccountPage: View {
                         ).padding(.horizontal)
                 
                 
-                .disabled(!formIsValid())
-                .opacity(formIsValid() ? 1.0 : 0.5)
+                .disabled(!agreedToTerms || !formIsValid())
+                .opacity(agreedToTerms && formIsValid() ? 1.0 : 0.5)
                 
                 // OR divider
                 HStack {
@@ -171,12 +177,18 @@ struct CreateAccountPage: View {
                     .padding()
                     .onTapGesture {
                         // Handle Google sign up
-                        handleGoogleSignIn()
+                        if agreedToTerms {
+                            handleGoogleSignIn()
+                        } else {
+                            errorMessage = "Please agree to the Terms of Service & Privacy Policy"
+                        }
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.white)
-                    ).padding(.horizontal)
+                    )
+                    .opacity(agreedToTerms ? 1.0 : 0.5)
+                    .padding(.horizontal)
                 
                 
  

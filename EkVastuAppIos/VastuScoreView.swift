@@ -134,7 +134,7 @@ struct VastuScoreView: View {
                                 // Open in-app browser with Jaya's booking URL
                                 showSafari = true
                             }) {
-                                Text("Book Consultation")
+                                Text("Coffee With Jaya")
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .padding(.vertical, 12)
@@ -224,14 +224,7 @@ struct VastuScoreView: View {
                     ProfileImageView(size: 30)
                 }
                 .buttonStyle(.plain)
-                
-                // Menu button
-                Button(action: {}) {
-                    Image(systemName: "line.horizontal.3")
-                        .font(.system(size: 20))
-                        .foregroundColor(.black)
-                }
-                .buttonStyle(.plain)
+                 
             }
             .padding(.horizontal, 20)
             .padding(.top, 10)

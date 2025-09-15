@@ -152,12 +152,7 @@ struct EvaluationQuestionsView: View {
                     .overlay(Circle().stroke(Color.white, lineWidth: 1))
             } .buttonStyle(.plain)
             
-            // Menu button
-            Button(action: {}) {
-                Image(systemName: "line.horizontal.3")
-                    .font(.system(size: 20))
-                    .foregroundColor(.black)
-            }.buttonStyle(.plain)
+           
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)

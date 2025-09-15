@@ -19,6 +19,7 @@ struct GoogleAddressSearchView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(10)
                     .padding(.horizontal)
+                    .accentColor(.black) // Make cursor visible
                     .onChange(of: searchText) { newValue in
                         if !newValue.isEmpty {
                             fetchPredictions(for: newValue)

@@ -134,23 +134,18 @@ struct VastuGalleryView: View {
                 .font(.headline)
                 .fontWeight(.bold)
             
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Connect with Jaya and get detailed analysis of your rooms and get your house Vastu approved")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.7))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                
-                Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Connect with Jaya and get detailed analysis of your rooms and get your house Vastu approved")
+                    .font(.subheadline)
+                    .foregroundColor(.black.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 Button(action: {
                     // Open booking URL in SafariView
                     showingSafari = true
                 }) {
                     HStack {
-                        
-                        Text("Consult")
+                        Text("Coffee With Jaya")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.vertical, 8)
@@ -158,10 +153,9 @@ struct VastuGalleryView: View {
                             .background(Color(hex: "#DD8E2E"))
                             .cornerRadius(8)
                     }
-                     
                 }
                 .buttonStyle(PlainButtonStyle())
-               
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()
@@ -227,6 +221,8 @@ struct VastuGalleryView: View {
                                 .foregroundColor(Color(hex: "#DD8E2E"))
                         }
                         .padding(.trailing, 20)
+                        .buttonStyle(.plain)
+                        
                     }
                 }
                 .padding(.vertical, 15) // Increase vertical padding
@@ -475,6 +471,7 @@ struct RoomPhotosGridView: View {
                                                     .frame(width: 60, height: 60)
                                                     .clipped()
                                                     .cornerRadius(4)
+                                                    .buttonStyle(.plain)
                                             }
                                         }
                                     } else {

@@ -1,5 +1,41 @@
 import Foundation
 
+// MARK: - Email Login Request Model
+struct EmailLoginRequest: Codable {
+    let tid: String
+    let email: String
+    let password: String
+    
+    enum CodingKeys: String, CodingKey {
+        case tid
+        case email
+        case password
+    }
+}
+
+// MARK: - Email Login Response Model
+struct EmailLoginResponse: Codable {
+    let data: EmailLoginData
+    
+    struct EmailLoginData: Codable {
+        let msg: String?
+        let accessToken: String?
+        let refreshToken: String?
+        let email: String?
+        let role: String?
+        let contact: Contact?
+        
+        enum CodingKeys: String, CodingKey {
+            case msg
+            case accessToken = "access_token"
+            case refreshToken = "refresh_token"
+            case email
+            case role
+            case contact
+        }
+    }
+}
+
 // MARK: - Sign In Request Model
 struct SignInRequest: Codable {
     let tid: String

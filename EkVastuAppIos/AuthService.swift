@@ -52,35 +52,22 @@ class AuthService: ObservableObject {
         password: String,
         completion: @escaping (Result<SignInResponse, NetworkError>) -> Void
     ) {
-        print("🔐 Starting sign in process for user: \(email)")
-        print("🏢 First getting tenant info to retrieve TID...")
+        print("🔐 Starting sign in for user: \(email)")
         
         isLoading = true
         errorMessage = nil
         
-        // Step 1: Get tenant info to retrieve TID
-        getTenantInfo { [weak self] tenantResult in
-            switch tenantResult {
-            case .success(let tenantInfo):
-                print("✅ Tenant info retrieved, tenantId: \(tenantInfo.tenantId)")
-                
-                // Step 2: Use the tid from tenant response for signin
-                self?.performSignIn(
-                    tid: tenantInfo.tenantId,
-                    email: email,
-                    password: password,
-                    completion: completion
-                )
-                
-            case .failure(let error):
-                print("❌ Failed to get tenant info: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    self?.errorMessage = "Failed to get tenant configuration"
-                    completion(.failure(error))
-                }
-            }
-        }
+        // Always use tidDebug or tidRelease from APIConfig
+        let tid = networkService.getCurrentTenantId()
+        print("✅ Using tenant ID from APIConfig: \(tid)")
+        
+        // Use the tid directly for signin
+        self.performSignIn(
+            tid: tid,
+            email: email,
+            password: password,
+            completion: completion
+        )
     }
     
     // MARK: - Internal Sign In Method
@@ -90,10 +77,12 @@ class AuthService: ObservableObject {
         password: String,
         completion: @escaping (Result<SignInResponse, NetworkError>) -> Void
     ) {
-        print("🔐 Performing sign in with tid: \(tid)")
+        // Override the passed tid with the dynamic tenant ID based on the base URL
+        let dynamicTid = networkService.getCurrentTenantId()
+        print("🔐 Performing sign in with tid: \(dynamicTid)")
         
         let request = SignInRequest(
-            tid: tid,
+            tid: dynamicTid,
             email: email,
             password: password,
             authType: "email"
@@ -167,31 +156,22 @@ class AuthService: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Step 1: Get tenant info to retrieve tid and orgId
-        getTenantInfo { [weak self] tenantResult in
-            switch tenantResult {
-            case .success(let tenantInfo):
-                print("✅ Tenant info retrieved for Google login")
-                print("   - TID: \(tenantInfo.tenantId)")
-                print("   - OrgId: \(tenantInfo.orgId)")
-                
-                // Step 2: Call Google login API with tenant info
-                self?.performGoogleLogin(
-                    tid: tenantInfo.tenantId,
-                    orgId: tenantInfo.orgId,
-                    idToken: idToken,
-                    completion: completion
-                )
-                
-            case .failure(let error):
-                print("❌ Failed to get tenant info for Google login: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    self?.errorMessage = "Failed to get tenant configuration"
-                    completion(.failure(error))
-                }
-            }
-        }
+        // Always use tidDebug or tidRelease from APIConfig
+        let tid = networkService.getCurrentTenantId()
+        // Use "PostFix" as a default orgId since we're not using the tenant info API
+        let orgId = "PostFix"
+        
+        print("✅ Using tenant ID from APIConfig: \(tid)")
+        print("   - TID: \(tid)")
+        print("   - OrgId: \(orgId)")
+        
+        // Call Google login API directly with APIConfig tid
+        self.performGoogleLogin(
+            tid: tid,
+            orgId: orgId,
+            idToken: idToken,
+            completion: completion
+        )
     }
     
     // MARK: - Google Signup Method
@@ -205,44 +185,31 @@ class AuthService: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Step 1: Get tenant info to retrieve tenantId
-        getTenantInfo { [weak self] tenantResult in
-            switch tenantResult {
-            case .success(let tenantInfo):
-                print("✅ Tenant info retrieved for Google signup")
-                print("   - TenantId: \(tenantInfo.tenantId)")
-                
-                // Extract user details from Firebase User
-                let name = user.displayName?.components(separatedBy: " ").first ?? ""
-                var lastName: String? = nil
-                
-                // Try to extract last name if available
-                if let displayName = user.displayName, displayName.contains(" ") {
-                    let components = displayName.components(separatedBy: " ")
-                    if components.count > 1 {
-                        lastName = components.dropFirst().joined(separator: " ")
-                    }
-                }
-                
-                // Step 2: Call Google signup API with tenant info and user details
-                self?.performGoogleSignUp(
-                    idToken: idToken,
-                    tenantId: tenantInfo.tenantId,
-                    name: name,
-                    lastName: lastName,
-                    phone: user.phoneNumber,
-                    completion: completion
-                )
-                
-            case .failure(let error):
-                print("❌ Failed to get tenant info for Google signup: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    self?.errorMessage = "Failed to get tenant configuration"
-                    completion(.failure(error))
-                }
+        // Always use tidDebug or tidRelease from APIConfig
+        let tid = networkService.getCurrentTenantId()
+        print("✅ Using tenant ID from APIConfig: \(tid)")
+        
+        // Extract user details from Firebase User
+        let name = user.displayName?.components(separatedBy: " ").first ?? ""
+        var lastName: String? = nil
+        
+        // Try to extract last name if available
+        if let displayName = user.displayName, displayName.contains(" ") {
+            let components = displayName.components(separatedBy: " ")
+            if components.count > 1 {
+                lastName = components.dropFirst().joined(separator: " ")
             }
         }
+        
+        // Call Google signup API directly with APIConfig tid
+        self.performGoogleSignUp(
+            idToken: idToken,
+            tenantId: tid,
+            name: name,
+            lastName: lastName,
+            phone: user.phoneNumber,
+            completion: completion
+        )
     }
     
     // MARK: - Internal Google Login Method
@@ -252,12 +219,14 @@ class AuthService: ObservableObject {
         idToken: String,
         completion: @escaping (Result<GoogleLoginResponse, NetworkError>) -> Void
     ) {
+        // Override the passed tid with the dynamic tenant ID based on the base URL
+        let dynamicTid = networkService.getCurrentTenantId()
         print("🔐 Performing Google login with backend")
-        print("   - TID: \(tid)")
+        print("   - TID: \(dynamicTid)")
         print("   - OrgId: \(orgId)")
         
         let request = GoogleLoginRequest(
-            tid: tid,
+            tid: dynamicTid,
             orgId: orgId,
             idToken: idToken
         )
@@ -427,15 +396,17 @@ class AuthService: ObservableObject {
         phone: String?,
         completion: @escaping (Result<GoogleSignUpResponse, NetworkError>) -> Void
     ) {
+        // Override the passed tenantId with the dynamic tenant ID based on the base URL
+        let dynamicTid = networkService.getCurrentTenantId()
         print("📝 Performing Google signup with backend")
-        print("   - TenantId: \(tenantId)")
+        print("   - TenantId: \(dynamicTid)")
         print("   - Name: \(name)")
         print("   - Last Name: \(lastName ?? "N/A")")
         print("   - Phone: \(phone ?? "N/A")")
         
         let request = GoogleSignUpRequest(
             idToken: idToken,
-            tenantId: tenantId,
+            tenantId: dynamicTid,
             orgId: "PostFix", // Adding required orgId parameter
             name: name,
             lastName: lastName,
@@ -701,12 +672,14 @@ class AuthService: ObservableObject {
         timezone: String?,
         completion: @escaping (Result<SignUpResponse, NetworkError>) -> Void
     ) {
-        print("📝 Performing sign up with tenantId: \(tenantId)")
+        // Override the passed tenantId with the dynamic tenant ID based on the base URL
+        let dynamicTid = networkService.getCurrentTenantId()
+        print("📝 Performing sign up with tenantId: \(dynamicTid)")
         
         let request = SignUpRequest(
             name: name,
             email: email,
-            tid: tenantId, // Using tenantId parameter but passing it as tid
+            tid: dynamicTid, // Using dynamic tenant ID
             orgId: "PostFix", // Adding required orgId parameter
             lastName: lastName,
             phone: phone,
@@ -819,6 +792,158 @@ class AuthService: ObservableObject {
                 continuation.resume(with: result)
             }
         }
+    }
+    
+    // MARK: - Email Login Method
+    func emailLogin(
+        email: String,
+        password: String,
+        completion: @escaping (Result<SignInResponse, NetworkError>) -> Void
+    ) {
+        print("🔐 Starting email login for user: \(email)")
+        
+        isLoading = true
+        errorMessage = nil
+        
+        // Use dynamic tenant ID based on the base URL
+        let tid = networkService.getCurrentTenantId()
+        
+        let request = EmailLoginRequest(
+            tid: tid,
+            email: email,
+            password: password
+        )
+        
+        guard let requestData = try? JSONEncoder().encode(request) else {
+            print("❌ Failed to encode email login request")
+            DispatchQueue.main.async {
+                self.isLoading = false
+                self.errorMessage = "Failed to prepare request"
+                completion(.failure(.decodingError(NSError(domain: "EncodingError", code: 0))))
+            }
+            return
+        }
+        
+        // Use direct URL request for the new API endpoint
+        let url = URL(string: "https://api.wajooba.xyz/smobile/tenant/email/login")!
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = requestData
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        print("🌐 Making direct POST request to: \(url.absoluteString)")
+        if let bodyString = String(data: requestData, encoding: .utf8) {
+            print("📤 Request body: \(bodyString)")
+        }
+        
+        // Print curl command for debugging
+        networkService.printCurlCommand(for: urlRequest)
+        
+        URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                
+                if let error = error {
+                    print("❌ Email login network error: \(error.localizedDescription)")
+                    self?.errorMessage = "Network error: \(error.localizedDescription)"
+                    completion(.failure(.networkError(error)))
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("❌ Invalid response type")
+                    self?.errorMessage = "Invalid server response"
+                    completion(.failure(.invalidRequest))
+                    return
+                }
+                
+                print("📥 Response status: \(httpResponse.statusCode)")
+                
+                guard let data = data else {
+                    print("❌ No data received")
+                    self?.errorMessage = "No data received from server"
+                    completion(.failure(.noData))
+                    return
+                }
+                
+                // First, try to decode as EmailLoginResponse to handle both success and error cases
+                do {
+                    let decoder = JSONDecoder()
+                    let emailResponse = try decoder.decode(EmailLoginResponse.self, from: data)
+                    
+                    // Check if the response contains an error message
+                    if let errorMsg = emailResponse.data.msg {
+                        print("❌ Email login failed with message: \(errorMsg)")
+                        self?.errorMessage = errorMsg
+                        completion(.failure(.serverError(httpResponse.statusCode, errorMsg)))
+                        return
+                    }
+                    
+                    // Check if we have the required authentication data
+                    guard let accessToken = emailResponse.data.accessToken,
+                          let refreshToken = emailResponse.data.refreshToken,
+                          let email = emailResponse.data.email,
+                          let role = emailResponse.data.role,
+                          let contact = emailResponse.data.contact else {
+                        print("❌ Email login response missing required fields")
+                        self?.errorMessage = "Server response missing required authentication data"
+                        completion(.failure(.decodingError(NSError(domain: "MissingData", code: 0))))
+                        return
+                    }
+                    
+                    print("✅ Email login successful")
+                    print("   - Email: \(email)")
+                    print("   - Role: \(role)")
+                    
+                    // Create a SignInResponse from the EmailLoginResponse data
+                    let signInResponse = SignInResponse(
+                        accessToken: accessToken,
+                        refreshToken: refreshToken,
+                        email: email,
+                        isNewProfile: false, // Default value
+                        role: role,
+                        contact: contact,
+                        tenant: nil, // No tenant info in this response
+                        orgList: nil // No org list in this response
+                    )
+                    
+                    // Store tokens
+                    TokenManager.shared.storeTokens(
+                        accessToken: accessToken,
+                        refreshToken: refreshToken
+                    )
+                    
+                    self?.errorMessage = nil
+                    completion(.success(signInResponse))
+                    
+                } catch {
+                    // If we couldn't decode as EmailLoginResponse, try to extract error message
+                    print("❌ Failed to decode email login response: \(error)")
+                    
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("Raw response: \(responseString)")
+                        
+                        // Try to extract error message from JSON
+                        do {
+                            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                               let dataObj = json["data"] as? [String: Any],
+                               let errorMsg = dataObj["msg"] as? String {
+                                self?.errorMessage = errorMsg
+                                completion(.failure(.serverError(httpResponse.statusCode, errorMsg)))
+                                return
+                            }
+                        } catch {
+                            // JSON parsing failed, use the raw response
+                            self?.errorMessage = "Invalid credentials or server error"
+                        }
+                    }
+                    
+                    self?.errorMessage = "Login failed. Please check your credentials."
+                    completion(.failure(.decodingError(error)))
+                }
+            }
+        }.resume()
     }
     
     // MARK: - Clear Error

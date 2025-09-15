@@ -84,6 +84,11 @@ struct UserDetailsForm: View {
                             .padding(.top, 30)
                         
                         Spacer()
+                        
+                        // Profile icon
+                        ProfileImageView(size: 24)
+                            .padding(.trailing, 20)
+                            .padding(.top, 30)
                     }
                     .padding(.top, 20)
                     
@@ -242,8 +247,15 @@ struct UserDetailsForm: View {
                                     .padding()
                                     .background(Color.white)
                                     .cornerRadius(8)
+                                    .accentColor(.black) // Make cursor visible
                                     .onChange(of: placeOfBirth) { newValue in
                                         validatePlaceOfBirth()
+                                    }
+                                    .onAppear {
+                                        // Focus on this field when view appears
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
+                                        }
                                     }
                             }
                             .padding(.horizontal)
@@ -288,21 +300,8 @@ struct UserDetailsForm: View {
                                 EmptyView()
                             }
                             
-                            // Sign Out Button
-                            Button(action: {
-                                alertMessage = "Are you sure you want to logout?"
-                                showAlert = true
-                            }) {
-                                Text("Sign Out")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.red)
-                                    .cornerRadius(8)
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 20)
+                            // Add padding at the bottom to ensure content doesn't get cut off
+                            Spacer().frame(height: 20)
                             
                             // Add padding at the bottom to ensure content doesn't get cut off
                             Spacer().frame(height: 50)

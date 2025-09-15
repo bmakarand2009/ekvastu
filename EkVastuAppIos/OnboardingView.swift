@@ -20,7 +20,7 @@ struct OnboardingView: View {
     var body: some View {
         if showSignIn {
             NavigationView {
-                CreateAccountPage(showCreateAccount: $showSignIn)
+                SignInPage()
             }
         } else if isOnboardingComplete {
             ContentView()
