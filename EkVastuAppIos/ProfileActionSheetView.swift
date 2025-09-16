@@ -150,12 +150,7 @@ struct ProfileActionSheetView: View {
                                     url: "https://invinciblepassiontalkshow.com/privacy-policy-disclaimers"
                                 )
                                 
-                                LinkButton(
-                                    icon: "link.circle.fill",
-                                    title: "Affiliate Disclaimers",
-                                    delay: 0.55,
-                                    url: "https://invinciblepassiontalkshow.com/affiliate-disclaimer"
-                                )
+
                             }
                         }
                         .padding(.horizontal, 20)

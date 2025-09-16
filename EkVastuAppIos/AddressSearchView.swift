@@ -76,7 +76,7 @@ struct AddressSearchView: View {
         
         let token = GMSAutocompleteSessionToken.init()
         let filter = GMSAutocompleteFilter()
-        filter.types = ["address"]
+        filter.type = .address
         // Remove country restriction to enable worldwide address search
         
         GMSPlacesClient.shared().findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: token) { predictions, error in
@@ -96,8 +96,8 @@ struct AddressSearchView: View {
     private func selectAddress(_ prediction: GMSAutocompletePrediction) {
         let token = GMSAutocompleteSessionToken.init()
         
-        let placeRequest = GMSFetchPlaceRequest(placeID: prediction.placeID, placeProperties: ["name", "formatted_address", "geometry"], sessionToken: token)
-        GMSPlacesClient.shared().fetchPlace(with: placeRequest) { place, error in
+        // Use Places SDK v10 API to fetch place details with coordinates
+        GMSPlacesClient.shared().fetchPlace(fromPlaceID: prediction.placeID, placeFields: .all, sessionToken: token) { place, error in
             if let error = error {
                 print("Error fetching place details: \(error.localizedDescription)")
                 onAddressSelected(prediction.attributedFullText.string, nil)
@@ -108,6 +108,9 @@ struct AddressSearchView: View {
             if let place = place {
                 let address = place.formattedAddress ?? prediction.attributedFullText.string
                 onAddressSelected(address, place.coordinate)
+                presentationMode.wrappedValue.dismiss()
+            } else {
+                onAddressSelected(prediction.attributedFullText.string, nil)
                 presentationMode.wrappedValue.dismiss()
             }
         }

@@ -56,9 +56,9 @@ struct UserDetailsForm: View {
         return dateOfBirthValid && timeOfBirthValid && placeOfBirthValid
     }
     
-    // Check if skip button should be enabled (only when profile exists)
+    // Skip button is always enabled
     private var isSkipButtonEnabled: Bool {
-        return profileManager.profileExists
+        return true
     }
     
     var body: some View {
