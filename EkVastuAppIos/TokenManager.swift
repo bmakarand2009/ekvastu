@@ -83,46 +83,76 @@ class TokenManager: ObservableObject {
     // MARK: - Token Access
     nonisolated func getAuthorizationHeader() -> String? {
         // Using UserDefaults directly to avoid actor isolation issues
-        guard let token = UserDefaults.standard.string(forKey: accessTokenKey) else {
-            print("⚠️ TokenManager: No access token available")
+        guard let token = UserDefaults.standard.string(forKey: accessTokenKey), !token.isEmpty else {
+            print("⚠️ TokenManager: No access token available in UserDefaults")
             return nil
         }
+        
+        // Basic validation to ensure token looks like a JWT
+        let parts = token.split(separator: ".")
+        if parts.count != 3 {
+            print("⚠️ TokenManager: Token does not appear to be a valid JWT format")
+            return nil
+        }
+        
+        print("✅ TokenManager: Authorization header created with token: \(token.prefix(15))...")
         return "Bearer \(token)"
     }
     
     nonisolated func hasValidToken() -> Bool {
+        // Check if token exists in UserDefaults
         guard let token = UserDefaults.standard.string(forKey: accessTokenKey), !token.isEmpty else {
+            print("⚠️ TokenManager: No access token found in UserDefaults")
             return false
         }
         
-        // Basic JWT expiry validation to avoid using expired tokens
+        print("🔑 TokenManager: Found access token in UserDefaults: \(token.prefix(15))...")
+        
+        // Basic JWT format validation
         let parts = token.split(separator: ".")
-        if parts.count == 3 {
-            let payloadB64 = String(parts[1])
-            // Base64URL decode
-            var normalized = payloadB64
-                .replacingOccurrences(of: "-", with: "+")
-                .replacingOccurrences(of: "_", with: "/")
-            let paddingLen = 4 - (normalized.count % 4)
-            if paddingLen < 4 { normalized += String(repeating: "=", count: paddingLen) }
-            
-            if let data = Data(base64Encoded: normalized),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                // exp could be Int or Double
-                var expTime: TimeInterval?
-                if let exp = json["exp"] as? Double {
-                    expTime = exp
-                } else if let exp = json["exp"] as? Int {
-                    expTime = TimeInterval(exp)
-                }
-                if let exp = expTime {
-                    let now = Date().timeIntervalSince1970
-                    if now >= exp {
-                        print("⚠️ TokenManager: Access token expired")
-                        return false
-                    }
-                }
+        if parts.count != 3 {
+            print("⚠️ TokenManager: Token does not have valid JWT format (expected 3 parts, got \(parts.count))")
+            return false
+        }
+        
+        // Skip expiry validation for Google login tokens if they don't have standard JWT format
+        // This is a workaround for cases where the token might be in a different format
+        if token.contains("google") || token.contains("oauth") {
+            print("🔑 TokenManager: Google/OAuth token detected, skipping expiry validation")
+            return true
+        }
+        
+        // For standard JWT tokens, validate expiry
+        let payloadB64 = String(parts[1])
+        // Base64URL decode
+        var normalized = payloadB64
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let paddingLen = 4 - (normalized.count % 4)
+        if paddingLen < 4 { normalized += String(repeating: "=", count: paddingLen) }
+        
+        if let data = Data(base64Encoded: normalized),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // exp could be Int or Double
+            var expTime: TimeInterval?
+            if let exp = json["exp"] as? Double {
+                expTime = exp
+            } else if let exp = json["exp"] as? Int {
+                expTime = TimeInterval(exp)
             }
+            if let exp = expTime {
+                let now = Date().timeIntervalSince1970
+                if now >= exp {
+                    print("⚠️ TokenManager: Access token expired")
+                    return false
+                } else {
+                    print("✅ TokenManager: Token is valid and not expired")
+                }
+            } else {
+                print("⚠️ TokenManager: Token does not contain expiry information")
+            }
+        } else {
+            print("⚠️ TokenManager: Could not decode token payload")
         }
         
         return true

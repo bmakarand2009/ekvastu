@@ -252,16 +252,15 @@ struct PropertyAddressListScreen: View {
             )
         }
         .onAppear {
-            // Load only if we don't already have addresses in memory (avoid duplicate fetch on first entry)
-            if self.addresses.isEmpty {
-                print("PropertyAddressListScreen appeared, loading addresses")
-                self.addresses = []
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    loadAddresses()
-                }
-            } else {
-                print("PropertyAddressListScreen appeared, using cached addresses (")
-            }
+            // Always check for token and reload properties when the screen appears
+            print("PropertyAddressListScreen appeared, checking token status")
+            print("🔑 Token available: \(TokenManager.shared.hasValidToken())")
+            
+            // Clear addresses and reload them
+            self.addresses = []
+            
+            // Try loading properties with multiple attempts to handle token availability delays
+            tryLoadingProperties()
         }
         .onDisappear {
             // Reset selection when leaving the screen
@@ -294,9 +293,49 @@ struct PropertyAddressListScreen: View {
         }
     }
     
+    // Retry mechanism for loading properties with multiple attempts
+    private func tryLoadingProperties(attempt: Int = 1, maxAttempts: Int = 5) {
+        print("🔄 Trying to load properties (attempt \(attempt) of \(maxAttempts))")
+        
+        // Check if token is available
+        if TokenManager.shared.hasValidToken() {
+            print("✅ Token found on attempt \(attempt), loading properties")
+            loadAddresses()
+            return
+        }
+        
+        // If we've reached max attempts, show the sign-in message
+        if attempt >= maxAttempts {
+            print("⚠️ Max attempts reached, token still not available")
+            self.isLoading = false
+            self.alertMessage = "Please sign in to view your properties"
+            self.showAlert = true
+            self.addresses = []
+            return
+        }
+        
+        // Wait and try again with exponential backoff
+        let delay = 0.5 * Double(attempt)
+        print("⏳ Waiting \(delay) seconds before next attempt")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            self.tryLoadingProperties(attempt: attempt + 1, maxAttempts: maxAttempts)
+        }
+    }
+    
     private func loadAddresses() {
         isLoading = true
         print("Loading addresses from backend API...")
+        
+        // Check if token is available before making API call
+        if !TokenManager.shared.hasValidToken() {
+            print("⚠️ No valid token available for properties API call. User needs to sign in first.")
+            self.isLoading = false
+            self.alertMessage = "Please sign in to view your properties"
+            self.showAlert = true
+            self.addresses = []
+            return
+        }
         
         // Fetch properties from backend API
         propertyService.getAllProperties { result in

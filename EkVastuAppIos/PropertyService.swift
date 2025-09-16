@@ -17,11 +17,35 @@ class PropertyService: ObservableObject {
     func getAllProperties(completion: @escaping (Result<PropertiesResponse, NetworkError>) -> Void) {
         print("🏠 Fetching all properties...")
         
+        // Validate token availability
+        guard TokenManager.shared.hasValidToken() else {
+            print("⚠️ No valid token available for properties API call")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
+        // Debug: Check if token is available
+        print("🔑 Token available: \(TokenManager.shared.getAuthorizationHeader() != nil)")
+        if let token = TokenManager.shared.getAuthorizationHeader() {
+            print("🔑 Token preview: \(String(token.prefix(20)))...")
+        } else {
+            print("⚠️ No authorization token available for properties API call")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
+        // Create explicit authorization headers
+        var headers: [String: String]? = nil
+        if let authHeader = TokenManager.shared.getAuthorizationHeader() {
+            headers = ["Authorization": authHeader]
+            print("🔑 Explicitly adding authorization header to properties request: \(String(authHeader.prefix(20)))...")
+        }
+        
         networkService.request<PropertiesResponse>(
             endpoint: .getAllProperties,
             method: .GET,
             body: nil,
-            headers: nil
+            headers: headers
         )
         .sink(
             receiveCompletion: { completionResult in
@@ -54,6 +78,13 @@ class PropertyService: ObservableObject {
     ) {
         print("🆕 Creating new property: \(name)")
         
+        // Validate token availability
+        guard TokenManager.shared.hasValidToken() else {
+            print("⚠️ No valid token available for property creation")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
         let request = CreatePropertyRequest(
             name: name,
             type: type,
@@ -69,11 +100,18 @@ class PropertyService: ObservableObject {
             return
         }
         
+        // Create explicit authorization headers
+        var headers: [String: String]? = nil
+        if let authHeader = TokenManager.shared.getAuthorizationHeader() {
+            headers = ["Authorization": authHeader]
+            print("🔑 Explicitly adding authorization header to property creation request")
+        }
+        
         networkService.request<PropertyResponse>(
             endpoint: .createProperty,
             method: .POST,
             body: requestData,
-            headers: nil
+            headers: headers
         )
         .sink(
             receiveCompletion: { completionResult in
@@ -97,11 +135,25 @@ class PropertyService: ObservableObject {
     func getProperty(id: String, completion: @escaping (Result<PropertyResponse, NetworkError>) -> Void) {
         print("🔍 Fetching property: \(id)")
         
+        // Validate token availability
+        guard TokenManager.shared.hasValidToken() else {
+            print("⚠️ No valid token available for property fetch")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
+        // Create explicit authorization headers
+        var headers: [String: String]? = nil
+        if let authHeader = TokenManager.shared.getAuthorizationHeader() {
+            headers = ["Authorization": authHeader]
+            print("🔑 Explicitly adding authorization header to property fetch request")
+        }
+        
         networkService.request<PropertyResponse>(
             endpoint: .getProperty(id),
             method: .GET,
             body: nil,
-            headers: nil
+            headers: headers
         )
         .sink(
             receiveCompletion: { completionResult in
@@ -135,6 +187,13 @@ class PropertyService: ObservableObject {
     ) {
         print("✏️ Updating property: \(id)")
         
+        // Validate token availability
+        guard TokenManager.shared.hasValidToken() else {
+            print("⚠️ No valid token available for property update")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
         let request = UpdatePropertyRequest(
             name: name,
             type: type,
@@ -150,11 +209,18 @@ class PropertyService: ObservableObject {
             return
         }
         
+        // Create explicit authorization headers
+        var headers: [String: String]? = nil
+        if let authHeader = TokenManager.shared.getAuthorizationHeader() {
+            headers = ["Authorization": authHeader]
+            print("🔑 Explicitly adding authorization header to property update request")
+        }
+        
         networkService.request<PropertyResponse>(
             endpoint: .updateProperty(id),
             method: .PUT,
             body: requestData,
-            headers: nil
+            headers: headers
         )
         .sink(
             receiveCompletion: { completionResult in
@@ -178,11 +244,25 @@ class PropertyService: ObservableObject {
     func deleteProperty(id: String, completion: @escaping (Result<DeleteResponse, NetworkError>) -> Void) {
         print("🗑️ Deleting property: \(id)")
         
+        // Validate token availability
+        guard TokenManager.shared.hasValidToken() else {
+            print("⚠️ No valid token available for property deletion")
+            completion(.failure(.unauthorized))
+            return
+        }
+        
+        // Create explicit authorization headers
+        var headers: [String: String]? = nil
+        if let authHeader = TokenManager.shared.getAuthorizationHeader() {
+            headers = ["Authorization": authHeader]
+            print("🔑 Explicitly adding authorization header to property deletion request")
+        }
+        
         networkService.request<DeleteResponse>(
             endpoint: .deleteProperty(id),
             method: .DELETE,
             body: nil,
-            headers: nil
+            headers: headers
         )
         .sink(
             receiveCompletion: { completionResult in

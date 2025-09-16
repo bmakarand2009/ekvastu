@@ -93,8 +93,13 @@ enum APIEndpoint {
         case .signin:
             // Use wajooba API for signin
             return URL(string: APIConfig.baseURL + path)!
+        case .getAllProperties, .createProperty, .getProperty, .updateProperty, .deleteProperty,
+             .createRoom, .getRoomsInProperty, .getRoom, .updateRoom,
+             .addPhotoWithURL, .getPhotosInRoom, .deletePhoto:
+            // Use ekshakti API for property, room, and photo management
+            return URL(string: APIConfig.ekshaktiBaseURL + path)!
         default:
-            // Use ekshakti API for profile, property, room, and photo management
+            // Use ekshakti API for profile management
             return URL(string: APIConfig.ekshaktiBaseURL + path)!
         }
     }
@@ -204,6 +209,12 @@ class NetworkService: ObservableObject {
         body: Data? = nil,
         headers: [String: String]? = nil
     ) -> AnyPublisher<T, NetworkError> {
+        // Debug: Check if we're making a property-related API call
+        let isPropertyEndpoint = endpoint.path.contains("/properties")
+        if isPropertyEndpoint {
+            print("🏠 Making property API request to: \(endpoint.url)")
+            print("🔑 Token status: \(TokenManager.shared.hasValidToken() ? "Valid token exists" : "No valid token")")
+        }
         
         var request = URLRequest(url: endpoint.url)
         request.httpMethod = method.rawValue
