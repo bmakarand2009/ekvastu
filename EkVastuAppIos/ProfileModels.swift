@@ -46,10 +46,12 @@ struct CreateProfileRequest: Codable {
 
 // Profile Update Request Model
 struct UpdateProfileRequest: Codable {
-    let placeOfBirth: String?
-    let timeOfBirth: String?
+    let dob: String
+    let placeOfBirth: String
+    let timeOfBirth: String
     
     enum CodingKeys: String, CodingKey {
+        case dob
         case placeOfBirth = "place_of_birth"
         case timeOfBirth = "time_of_birth"
     }

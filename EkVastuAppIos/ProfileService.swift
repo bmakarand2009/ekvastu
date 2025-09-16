@@ -264,15 +264,17 @@ class ProfileService: ObservableObject {
         }.resume()
     }
     
-    /// Update existing profile
+    /// Update existing profile (all fields required)
     func updateProfile(
-        placeOfBirth: String? = nil,
-        timeOfBirth: String? = nil,
+        dob: String,
+        placeOfBirth: String,
+        timeOfBirth: String,
         completion: @escaping (Result<ProfileResponse, NetworkError>) -> Void
     ) {
         print("✏️ Updating profile...")
         
         let request = UpdateProfileRequest(
+            dob: dob,
             placeOfBirth: placeOfBirth,
             timeOfBirth: timeOfBirth
         )
@@ -306,6 +308,16 @@ class ProfileService: ObservableObject {
         
         // Print curl command for debugging
         NetworkService.shared.printCurlCommand(for: urlRequest)
+        
+        // Log example curl in requested format for clarity
+        if let authHeader = urlRequest.value(forHTTPHeaderField: "Authorization") {
+            print("curl -X PUT \"\(url.absoluteString)\" \\")
+            print("  -H \"Authorization: \(authHeader)\" \\")
+            print("  -H \"Content-Type: application/json\" \\")
+            if let bodyString = String(data: requestData, encoding: .utf8) {
+                print("  -d '\(bodyString)'")
+            }
+        }
         
         URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -391,9 +403,9 @@ class ProfileService: ObservableObject {
     }
     
     @MainActor
-    func updateProfile(placeOfBirth: String? = nil, timeOfBirth: String? = nil) async throws -> ProfileResponse {
+    func updateProfile(dob: String, placeOfBirth: String, timeOfBirth: String) async throws -> ProfileResponse {
         return try await withCheckedThrowingContinuation { continuation in
-            updateProfile(placeOfBirth: placeOfBirth, timeOfBirth: timeOfBirth) { result in
+            updateProfile(dob: dob, placeOfBirth: placeOfBirth, timeOfBirth: timeOfBirth) { result in
                 continuation.resume(with: result)
             }
         }

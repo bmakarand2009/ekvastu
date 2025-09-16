@@ -119,8 +119,8 @@ class ProfileManager: ObservableObject {
         }
     }
     
-    /// Update existing profile
-    func updateProfile(placeOfBirth: String? = nil, timeOfBirth: String? = nil, completion: @escaping (Bool, String?) -> Void) {
+    /// Update existing profile (all fields required)
+    func updateProfile(dob: String, placeOfBirth: String, timeOfBirth: String, completion: @escaping (Bool, String?) -> Void) {
         // First check if user is authenticated
         guard checkAuthentication() else {
             print("⚠️ ProfileManager: Not authenticated, skipping profile update")
@@ -135,6 +135,7 @@ class ProfileManager: ObservableObject {
         errorMessage = nil
         
         profileService.updateProfile(
+            dob: dob,
             placeOfBirth: placeOfBirth,
             timeOfBirth: timeOfBirth
         ) { [weak self] result in

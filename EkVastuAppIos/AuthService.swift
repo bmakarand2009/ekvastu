@@ -125,12 +125,14 @@ class AuthService: ObservableObject {
                 print("Role: \(response.role)")
                 print("Access Token: \(response.accessToken.prefix(20))...")
                 
-                // Update tokens in TokenManager on every signin
+                // Update tokens in TokenManager on every signin and then fetch profile
                 Task { @MainActor in
                     TokenManager.shared.storeTokens(
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken
                     )
+                    // Trigger profile auto-create/fetch with the new access token
+                    ProfileService.shared.checkProfile { _ in }
                 }
                 
                 // Update tenant configuration from signin response if available
@@ -358,11 +360,13 @@ class AuthService: ObservableObject {
                     print("   - Email: \(response.email)")
                     print("   - Role: \(response.role)")
                     
-                    // Store tokens from backend response
+                    // Store tokens from backend response and then fetch profile
                     TokenManager.shared.storeTokens(
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken
                     )
+                    // Trigger profile auto-create/fetch with the new access token
+                    ProfileService.shared.checkProfile { _ in }
                     
                     // Update tenant config if present
                     if let tenant = response.tenant {
@@ -720,12 +724,14 @@ class AuthService: ObservableObject {
                 print("Name: \(response.contact.fullName)")
                 print("Access Token: \(response.accessToken.prefix(20))...")
                 
-                // Store tokens from signup response
+                // Store tokens from signup response and then fetch profile
                 Task { @MainActor in
                     TokenManager.shared.storeTokens(
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken ?? ""
                     )
+                    // Trigger profile auto-create/fetch with the new access token
+                    ProfileService.shared.checkProfile { _ in }
                 }
                 
                 // Update tenant configuration if available

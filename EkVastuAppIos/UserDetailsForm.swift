@@ -502,7 +502,8 @@ struct UserDetailsForm: View {
     }
     
     private func validatePlaceOfBirth() {
-        placeOfBirthValid = !placeOfBirth.isEmpty
+        let trimmed = placeOfBirth.trimmingCharacters(in: .whitespacesAndNewlines)
+        placeOfBirthValid = !trimmed.isEmpty
     }
     
     // Save profile data to keychain for persistence
@@ -618,7 +619,8 @@ struct UserDetailsForm: View {
         if profileManager.profileExists {
             // Update existing profile
             profileManager.updateProfile(
-                placeOfBirth: placeOfBirth,
+                dob: dobString,
+                placeOfBirth: placeOfBirth.trimmingCharacters(in: .whitespacesAndNewlines),
                 timeOfBirth: timeString
             ) { success, message in
                 DispatchQueue.main.async {
