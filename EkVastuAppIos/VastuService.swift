@@ -74,7 +74,17 @@ final class VastuService: ObservableObject {
                 case .finished: break
                 case .failure(let err):
                     print("🧭 VastuService.submitRoomAnswers -> ERROR: \(err.localizedDescription)")
-                    if let nerr = err as? NetworkError { completion(.failure(nerr)) } else { completion(.failure(.networkError(err))) }
+                    // If server returns 500 duplicate unique constraint, surface a friendlier error
+                    if case let NetworkError.serverError(status, message) = err,
+                       status == 500,
+                       let message = message,
+                       message.lowercased().contains("unique constraint") {
+                        completion(.failure(.serverError(409, message)))
+                    } else if let nerr = err as? NetworkError {
+                        completion(.failure(nerr))
+                    } else {
+                        completion(.failure(.networkError(err)))
+                    }
                 }
             } receiveValue: { resp in
                 print("🧭 VastuService.submitRoomAnswers -> RESPONSE: \(resp)")

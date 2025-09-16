@@ -6,7 +6,7 @@ struct ProfileImageView: View {
     @State private var profileImage: UIImage?
     @State private var isLoading = false
     @State private var showingActionSheet = false
-    @State private var navigateToOnboarding = false
+    // Removed navigateToOnboarding; rely on root switching via auth state
     
     var body: some View {
         ZStack {
@@ -34,10 +34,7 @@ struct ProfileImageView: View {
         .onAppear {
             loadProfileImage()
         }
-        .fullScreenCover(isPresented: $navigateToOnboarding) {
-            // Navigate to onboarding screen after logout
-            OnboardingView()
-        }
+        // Removed modal presentation to Onboarding; root SplashScreen will switch automatically when auth is cleared.
         .fullScreenCover(isPresented: $showingActionSheet) {
             ZStack {
                 Color.clear.background(.ultraThinMaterial)
@@ -71,10 +68,7 @@ struct ProfileImageView: View {
     private func handleLogout() {
         // Use LogoutManager to handle the logout process
         LogoutManager.shared.logout {
-            // After logout is complete, navigate to onboarding
-            DispatchQueue.main.async {
-                self.navigateToOnboarding = true
-            }
+            // After logout is complete, root will switch to Onboarding via SplashScreen
         }
     }
 }

@@ -26,6 +26,12 @@ struct VastuScoreView: View {
         self.roomName = roomName
         self.answers = answers
         self._shouldNavigateToHome = shouldNavigateToHome
+        // Debug: log incoming answers
+        print("🧭 VastuScoreView.init -> received answers count: \(answers.count)")
+        answers.forEach { item in
+            if let t = item.answer_text { print("  - \(item.question_id): text=\(t)") }
+            if let v = item.answer_value { print("  - \(item.question_id): value=\(v)") }
+        }
     }
 
     var body: some View {
@@ -304,6 +310,18 @@ struct VastuScoreView: View {
         
         // Add delay to ensure server has time to process
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Guard: avoid empty submissions
+            guard !self.answers.isEmpty else {
+                print("❌ submitAndLoad aborted: answers array is empty")
+                self.isSubmitting = false
+                self.errorMessage = "Please answer all questions before submitting."
+                return
+            }
+            print("🧭 submitAndLoad -> submitting answers count: \(self.answers.count)")
+            self.answers.forEach { item in
+                if let t = item.answer_text { print("  - \(item.question_id): text=\(t)") }
+                if let v = item.answer_value { print("  - \(item.question_id): value=\(v)") }
+            }
             self.service.submitRoomAnswers(roomId: self.roomId, answers: self.answers) { res in
                 switch res {
                 case .success:
@@ -333,9 +351,27 @@ struct VastuScoreView: View {
                     }
                 case .failure(let err):
                     print("❌ Failed to submit answers: \(err)")
-                    DispatchQueue.main.async {
-                        self.isSubmitting = false
-                        self.errorMessage = "Failed to submit answers: \(err.localizedDescription)"
+                    // If duplicate unique constraint, attempt score fetch directly and show a softer message
+                    if case let NetworkError.serverError(status, data) = err, status == 409 {
+                        print("ℹ️ Answers likely exist; fetching score without re-submitting.")
+                        self.service.getRoomVastuScore(roomId: self.roomId) { res2 in
+                            DispatchQueue.main.async {
+                                self.isSubmitting = false
+                                switch res2 {
+                                case .success(let scoreResp):
+                                    print("✅ Score fetched after 409: \(scoreResp.data.displayPercentage)%")
+                                    self.score = scoreResp.data
+                                case .failure(let e2):
+                                    print("❌ Failed to get score after 409: \(e2)")
+                                    self.errorMessage = "We couldn't recalculate right now. Please try again."
+                                }
+                            }
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            self.isSubmitting = false
+                            self.errorMessage = "Failed to submit answers: \(err.localizedDescription)"
+                        }
                     }
                 }
             }

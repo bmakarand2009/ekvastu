@@ -17,7 +17,21 @@ struct RoomQuestionsResponse: Codable {
 // MARK: - Submit Answers
 struct RoomAnswerItem: Codable {
     let question_id: String
-    let answer: String
+    let answer_text: String?
+    let answer_value: Double?
+    
+    // Convenience initializers
+    init(question_id: String, answer_text: String) {
+        self.question_id = question_id
+        self.answer_text = answer_text
+        self.answer_value = nil
+    }
+    
+    init(question_id: String, answer_value: Double) {
+        self.question_id = question_id
+        self.answer_text = nil
+        self.answer_value = answer_value
+    }
 }
 
 struct SubmitRoomAnswersRequest: Codable {

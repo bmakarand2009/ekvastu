@@ -353,11 +353,8 @@ struct UserDetailsForm: View {
                 }
             }
             
-            // Add fullScreenCover for navigation to onboarding
-            .fullScreenCover(isPresented: $navigateToOnboarding) {
-                OnboardingView()
-                    .environmentObject(authManager)
-            }
+            // Removed modal presentation to Onboarding to avoid stacked overlays.
+            // SplashScreen will show Onboarding automatically when isAuthenticated becomes false.
             .onChange(of: profileManager.errorMessage) { errorMessage in
                 if let errorMessage = errorMessage {
                     // Show profile not found message

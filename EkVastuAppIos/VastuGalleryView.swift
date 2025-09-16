@@ -11,6 +11,7 @@ struct VastuGalleryView: View {
     @State private var alertMessage = ""
     @State private var roomsWithPhotos: [RoomWithPhotos] = []
     @State private var showingSafari = false
+    @State private var selectedEvalRoom: RoomWithPhotos? = nil
     
     // Services
     private let roomService = RoomService.shared
@@ -104,6 +105,9 @@ struct VastuGalleryView: View {
             }
             .sheet(isPresented: $showingSafari) {
                 SafariView(url: URL(string: "https://bookme.name/JayaKaramchandani/discovery-call-home-vastu-visit-online-session")!)
+            }
+            .fullScreenCover(item: $selectedEvalRoom) { room in
+                EvaluationQuestionsView(roomId: room.id, roomName: room.name)
             }
         }
     }
@@ -232,8 +236,26 @@ struct VastuGalleryView: View {
                     // Load and display all photos
                     RoomPhotosGridView(room: room)
                         .padding(.horizontal, 20)
-                        .padding(.top, 0) // Remove top padding
-                        .padding(.bottom, 15) // Add bottom padding
+                        .padding(.top, 0)
+                        .padding(.bottom, 10)
+                    
+                    // If Entrance and has at least one photo, show Evaluate link
+                    if room.type.lowercased() == "entrance" {
+                        Button(action: {
+                            print("🔎 Evaluate tapped for room: \(room.name) [id=\(room.id)]")
+                            selectedEvalRoom = room
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chart.bar.xaxis")
+                                Text("Evaluate Vastu Score")
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "#DD8E2E"))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
+                    }
                 } else {
                     Text("No photos available")
                         .font(.subheadline)

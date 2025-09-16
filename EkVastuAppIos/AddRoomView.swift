@@ -20,7 +20,7 @@ struct AddRoomView: View {
             }
         }) {
             HStack {
-                Text(selectedRoomType.isEmpty ? "Select room type" : selectedRoomType)
+                Text(selectedRoomType.isEmpty ? "Select Room Name" : selectedRoomType)
                     .foregroundColor(.black)
                 Spacer()
                 Image(systemName: "chevron.down")

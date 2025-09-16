@@ -19,6 +19,9 @@ struct HomeAnalyzeView: View {
     @State private var showPropertySelection = false
     @State private var entranceObject: RoomData? = nil // Stores the entrance room data
     
+    // Coffee With Jaya button
+    @State private var showSafari = false
+    
     // Photo management
     @State private var entrancePhotos: [CapturedPhoto] = []
     @State private var roomPhotos: [CapturedPhoto] = []
@@ -113,6 +116,23 @@ struct HomeAnalyzeView: View {
                 // Your Vastu Gallery Card
                 vastuGalleryCardView
                 
+                // Coffee With Jaya button below gallery
+                HStack {
+                    Button(action: { showSafari = true }) {
+                        Text("Coffee With Jaya")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(Color(hex: "#DD8E2E"))
+                            .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                
                 Spacer(minLength: 100) // Space for bottom navigation
             }
             .padding(.bottom, 20)
@@ -120,6 +140,10 @@ struct HomeAnalyzeView: View {
         .navigationBarHidden(true)
         .onAppear {
             loadPropertiesAndRooms()
+        }
+        // Remove sticky inset; button now scrolls with content
+        .sheet(isPresented: $showSafari) {
+            SafariView(url: URL(string: "https://bookme.name/JayaKaramchandani/discovery-call-home-vastu-visit-online-session")!)
         }
         // Camera for regular room analysis
         .fullScreenCover(isPresented: $showCameraView) {
@@ -201,6 +225,10 @@ struct HomeAnalyzeView: View {
                         // Add to backend rooms array
                         self.backendRooms.append(roomData)
                         
+                        // Auto-select the newly created room and update selection-dependent UI
+                        self.selectedRoom = roomData.id
+                        self.selectedRoomData = roomData
+                        
                         // Reset form
                         self.resetRoomForm()
                         
@@ -260,6 +288,16 @@ struct HomeAnalyzeView: View {
                         
                         // Store all rooms
                         self.backendRooms = rooms
+                        
+                        // Auto-select the latest non-entrance room for this property (if any)
+                        let nonEntrance = rooms.filter { $0.type.lowercased() != "entrance" && $0.propertyId == self.propertyId }
+                        if let latest = nonEntrance.sorted(by: { $0.createdAt > $1.createdAt }).first {
+                            self.selectedRoom = latest.id
+                            self.selectedRoomData = latest
+                        } else {
+                            self.selectedRoom = nil
+                            self.selectedRoomData = nil
+                        }
                         
                         // Print room details for debugging
                         for room in rooms {
@@ -479,7 +517,7 @@ struct HomeAnalyzeView: View {
     private var roomTypeSelectionView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Select Room Type")
+                Text("Select Room Name")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.black)
@@ -508,6 +546,7 @@ struct HomeAnalyzeView: View {
                         ForEach(allRooms, id: \.id) { room in
                             Button(room.name) {
                                 selectedRoom = room.id
+                                selectedRoomData = room
                             }
                             .buttonStyle(.plain)
                         }

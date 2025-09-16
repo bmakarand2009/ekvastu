@@ -9,7 +9,7 @@ struct CreateAccountPage: View {
     @State private var agreedToTerms: Bool = false
     @Environment(\.presentationMode) var presentationMode
     @Binding var showCreateAccount: Bool
-    @State private var navigateToOnboarding = false
+    // Removed unused navigateToOnboarding; rely on root switching
     
     // Authentication state
     @ObservedObject private var authManager = AuthenticationManager.shared

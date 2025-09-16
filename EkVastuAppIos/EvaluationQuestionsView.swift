@@ -17,7 +17,14 @@ struct EvaluationQuestionsView: View {
     @State private var shouldNavigateToHome = true // Flag to control navigation after VastuScoreView
 
     private let service = VastuService.shared
-    @State private var builtAnswers: [RoomAnswerItem] = []
+    // Payload to present VastuScoreView with stable data
+    struct ScorePayload: Identifiable {
+        let id = UUID()
+        let roomId: String
+        let roomName: String
+        let answers: [RoomAnswerItem]
+    }
+    @State private var scorePayload: ScorePayload? = nil
 
     var body: some View {
         ZStack {
@@ -89,22 +96,6 @@ struct EvaluationQuestionsView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
                             .padding(.bottom, 30)
-                            
-                            .fullScreenCover(isPresented: $showScore) {
-                                VastuScoreView(roomId: roomId, roomName: roomName, answers: builtAnswers, shouldNavigateToHome: $shouldNavigateToHome)
-                                    .onDisappear {
-                                        // Only navigate to HomeAnalyzeView if shouldNavigateToHome is true
-                                        if shouldNavigateToHome {
-                                            goToHomeAnalyze()
-                                        } else {
-                                            // Reset the flag for next time
-                                            shouldNavigateToHome = true
-                                        }
-                                    }
-                            }
-                            .fullScreenCover(isPresented: $navigateToHomeAnalyze) {
-                                HomeAnalyzeView(selectedPropertyType: "residential", propertyId: roomPropertyId)
-                            }
                         }
                     }
                 }
@@ -112,6 +103,20 @@ struct EvaluationQuestionsView: View {
         }
         .onAppear { loadQuestions() }
         .navigationBarHidden(true)
+        // Present VastuScoreView with a stable payload to avoid empty answers
+        .fullScreenCover(item: $scorePayload) { payload in
+            VastuScoreView(roomId: payload.roomId, roomName: payload.roomName, answers: payload.answers, shouldNavigateToHome: $shouldNavigateToHome)
+                .onDisappear {
+                    if shouldNavigateToHome {
+                        goToHomeAnalyze()
+                    } else {
+                        shouldNavigateToHome = true
+                    }
+                }
+        }
+        .fullScreenCover(isPresented: $navigateToHomeAnalyze) {
+            HomeAnalyzeView(selectedPropertyType: "residential", propertyId: roomPropertyId)
+        }
     }
 
     private var header: some View {
@@ -142,16 +147,11 @@ struct EvaluationQuestionsView: View {
                     .foregroundColor(.black)
             }.buttonStyle(.plain)
             
-            // Profile image
+            // Profile image (match HomeAnalyzeView)
             Button(action: {}) {
-                Image("jaya")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 35, height: 35)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white, lineWidth: 1))
-            } .buttonStyle(.plain)
-            
+                ProfileImageView(size: 40, lineWidth: 2)
+            }
+            .buttonStyle(.plain)
            
         }
         .padding(.horizontal, 20)
@@ -346,13 +346,36 @@ struct EvaluationQuestionsView: View {
     }
 
     private func goToScore() {
-        // Build answers
+        // Build answers from current selections with normalization
         let items = questions.compactMap { q -> RoomAnswerItem? in
-            guard let val = answers[q.id] else { return nil }
-            return RoomAnswerItem(question_id: q.id, answer: val)
+            guard let raw = answers[q.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+            // Multiple choice stays as text; yes/no mapped to Yes/No text for now
+            switch q.type {
+            case "multiple_choice":
+                return RoomAnswerItem(question_id: q.id, answer_text: raw)
+            case "yes_no":
+                let yesNo = raw.lowercased() == "yes" ? "Yes" : (raw.lowercased() == "no" ? "No" : raw)
+                return RoomAnswerItem(question_id: q.id, answer_text: yesNo)
+            default:
+                return RoomAnswerItem(question_id: q.id, answer_text: raw)
+            }
         }
-        builtAnswers = items
-        showScore = true
+        // Debug: log what we are about to send
+        print("🧭 goToScore -> built answers count: \(items.count)")
+        items.forEach { item in
+            if let t = item.answer_text { print("  - \(item.question_id): text=\(t)") }
+            if let v = item.answer_value { print("  - \(item.question_id): value=\(v)") }
+        }
+        
+        // Present score only if we have answers
+        if !items.isEmpty {
+            let payload = ScorePayload(roomId: roomId, roomName: roomName, answers: items)
+            // Assign payload first, then toggle the sheet
+            self.scorePayload = payload
+            DispatchQueue.main.async {
+                self.showScore = true // retained if referenced elsewhere; not used for presentation now
+            }
+        }
     }
     
     // Navigate to HomeAnalyzeView
