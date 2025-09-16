@@ -252,13 +252,15 @@ struct PropertyAddressListScreen: View {
             )
         }
         .onAppear {
-            // Always load addresses when screen appears
-            print("PropertyAddressListScreen appeared, loading addresses")
-            // Reset addresses array to trigger loading state
-            self.addresses = []
-            // Load addresses with a slight delay to ensure view is fully presented
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                loadAddresses()
+            // Load only if we don't already have addresses in memory (avoid duplicate fetch on first entry)
+            if self.addresses.isEmpty {
+                print("PropertyAddressListScreen appeared, loading addresses")
+                self.addresses = []
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    loadAddresses()
+                }
+            } else {
+                print("PropertyAddressListScreen appeared, using cached addresses (")
             }
         }
         .onDisappear {

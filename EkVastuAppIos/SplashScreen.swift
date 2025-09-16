@@ -26,7 +26,7 @@ struct SplashScreen: View {
                                 .environmentObject(authManager)
                                 .buttonStyle(.plain)
                         case .propertyAddress:
-                            PropertyAddressScreen()
+                            PropertyAddressListScreen()
                                 .environment(\.managedObjectContext, viewContext)
                                 .environmentObject(authManager)
                                 .buttonStyle(.plain)

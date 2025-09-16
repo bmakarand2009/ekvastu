@@ -26,14 +26,8 @@ struct RemediesView: View {
                     }
                     .buttonStyle(.plain)
                     
-                    Button(action: {
-                        // Profile action
-                    }) {
-                        Image(systemName: "person.circle")
-                            .font(.system(size: 20))
-                            .foregroundColor(.black)
-                    }
-                    .buttonStyle(.plain)
+                    // Profile image with built-in action sheet
+                    ProfileImageView(size: 40, lineWidth: 2)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -168,9 +162,13 @@ struct RemedyCard: View {
         .onTapGesture {
             isShowingDetails = true
         }
-        .navigationDestination(isPresented: $isShowingDetails) {
-            RemedyDetailView(remedy: remedy)
-        }
+        // Use a hidden NavigationLink for compatibility with NavigationView
+        .background(
+            NavigationLink(destination: RemedyDetailView(remedy: remedy), isActive: $isShowingDetails) {
+                EmptyView()
+            }
+            .hidden()
+        )
     }
 }
 

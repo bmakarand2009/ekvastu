@@ -57,7 +57,7 @@ extension AuthenticationManager {
             return AnyView(UserDetailsForm())
         } else if !Self.hasCompletedPropertyAddress {
             // User has completed details but not property address
-            return AnyView(PropertyAddressScreen())
+            return AnyView(PropertyAddressListScreen())
         } else {
             // User has completed everything, show main content
             return AnyView(ContentView())

@@ -648,9 +648,11 @@ class AuthenticationManager: ObservableObject {
                         let pobOk = !profile.placeOfBirth.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
                         if dobOk && tobOk && pobOk {
-                            // Skip UserDetailsForm -> go to PropertyAddress step next
+                            // User details present -> prefetch properties now for faster next screen
                             AuthenticationManager.hasCompletedUserDetails = true
                             AuthenticationManager.hasCompletedPropertyAddress = false
+                            // Preload properties (non-blocking)
+                            PropertyService.shared.getAllProperties { _ in }
                         } else {
                             // Incomplete -> show UserDetailsForm
                             AuthenticationManager.hasCompletedUserDetails = false

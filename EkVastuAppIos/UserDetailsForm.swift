@@ -677,7 +677,10 @@ struct UserDetailsForm: View {
             // Request notification permissions
             requestNotificationPermissions()
             
-            // Navigate to property address list screen
+            // Prefetch properties (non-blocking) and navigate
+            Task { @MainActor in
+                PropertyService.shared.getAllProperties { _ in }
+            }
             navigateToPropertyAddressList = true
             
         } else {
@@ -693,8 +696,10 @@ struct UserDetailsForm: View {
         UserDefaults.standard.set(true, forKey: "hasCompletedUserDetails")
         UserDefaults.standard.synchronize()
         
-        // Always navigate to PropertyAddressListScreen
-        // Users can use "Add new address" button to start adding properties
+        // Prefetch properties and navigate to PropertyAddressListScreen
+        Task { @MainActor in
+            PropertyService.shared.getAllProperties { _ in }
+        }
         print("Skipping user details, navigating to PropertyAddressListScreen")
         navigateToPropertyAddressList = true
     }
