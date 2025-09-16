@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		41345B294F6647CCA8AD06F3 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 37D5328CCC2D491DB7A85755 /* Sentry */; };
 		E70B063E2E6604930015B277 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = E70B063D2E6604930015B277 /* FirebaseAI */; };
 		E70B06402E6604930015B277 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = E70B063F2E6604930015B277 /* FirebaseAnalytics */; };
 		E70B06422E6604930015B277 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06412E6604930015B277 /* FirebaseAnalyticsCore */; };
@@ -36,7 +37,6 @@
 		E70B06752E6604F90015B277 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06742E6604F90015B277 /* GoogleSignIn */; };
 		E70B06772E6604F90015B277 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E70B06762E6604F90015B277 /* GoogleSignInSwift */; };
 		E710E7D12E6B297A006B635C /* Cloudinary in Frameworks */ = {isa = PBXBuildFile; productRef = E710E7D02E6B297A006B635C /* Cloudinary */; };
-		41345B294F6647CCA8AD06F3 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 37D5328CCC2D491DB7A85755 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -229,6 +229,24 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		261BCA7A0C1D435485C256F5 /* Upload Debug Symbols to Sentry */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+			);
+			name = "Upload Debug Symbols to Sentry";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script is responsible for uploading debug symbols and source context for Sentry.\nif which sentry-cli >/dev/null; then\n  export SENTRY_ORG=wajooba\n  export SENTRY_PROJECT=ekvastu\n  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\n  if [ ! $? -eq 0 ]; then\n    echo \"warning: sentry-cli - $ERROR\"\n  fi\nelse\n  echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		E70B055C2E65FE4A0015B277 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -365,9 +383,11 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = FJWFFT85KA;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EkVastuAppIos/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -395,8 +415,6 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 2.5;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Debug;
 		};
@@ -409,9 +427,11 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = FJWFFT85KA;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EkVastuAppIos/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -439,8 +459,6 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 2.5;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Release;
 		};
@@ -468,6 +486,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		42A82F819A6447E09DB96BFF /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa/";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 		E70B063C2E6604930015B277 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -508,17 +534,14 @@
 				minimumVersion = 5.2.3;
 			};
 		};
-		42A82F819A6447E09DB96BFF /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/getsentry/sentry-cocoa/";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 8.0.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		37D5328CCC2D491DB7A85755 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42A82F819A6447E09DB96BFF /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
 		E70B063D2E6604930015B277 /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E70B063C2E6604930015B277 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -664,41 +687,7 @@
 			package = E710E7CF2E6B297A006B635C /* XCRemoteSwiftPackageReference "cloudinary_ios" */;
 			productName = Cloudinary;
 		};
-		37D5328CCC2D491DB7A85755 /* Sentry */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 42A82F819A6447E09DB96BFF /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
-			productName = Sentry;
-		};
 /* End XCSwiftPackageProductDependency section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		261BCA7A0C1D435485C256F5 /* Upload Debug Symbols to Sentry */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script is responsible for uploading debug symbols and source context for Sentry.
-if which sentry-cli >/dev/null; then
-  export SENTRY_ORG=wajooba
-  export SENTRY_PROJECT=ekvastu
-  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)
-  if [ ! $? -eq 0 ]; then
-    echo \"warning: sentry-cli - $ERROR\"
-  fi
-else
-  echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"
-fi
-";
-			name = "Upload Debug Symbols to Sentry";
-		};
-/* End PBXShellScriptBuildPhase section */
 	};
 	rootObject = E70B05582E65FE4A0015B277 /* Project object */;
 }

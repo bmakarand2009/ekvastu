@@ -74,7 +74,7 @@ struct OnboardingView: View {
                         .tag(2)
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .animation(.easeInOut)
+                    .animation(.easeInOut, value: currentPage)
                 }
             }
         }

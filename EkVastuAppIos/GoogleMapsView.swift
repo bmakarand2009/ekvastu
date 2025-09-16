@@ -8,7 +8,7 @@ struct GoogleMapsView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> GMSMapView {
         let camera = GMSCameraPosition.camera(withLatitude: coordinate.latitude, longitude: coordinate.longitude, zoom: 15.0)
-        let mapView = GMSMapView.map(withFrame: .zero, camera: camera)
+        let mapView = GMSMapView(frame: .zero, camera: camera)
         mapView.delegate = context.coordinator
         return mapView
     }
@@ -69,8 +69,7 @@ struct GoogleMapsView: UIViewRepresentable {
     }
 }
 
-extension CLLocationCoordinate2D: Equatable {
-    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
-        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
-    }
+// Instead of conforming to Equatable directly, use a helper function
+func areCoordinatesEqual(_ lhs: CLLocationCoordinate2D, _ rhs: CLLocationCoordinate2D) -> Bool {
+    return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
 }

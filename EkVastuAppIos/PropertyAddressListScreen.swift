@@ -55,10 +55,8 @@ struct PropertyAddressListScreen: View {
                     
                     Spacer()
                     
-                    // Empty view for balance
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 20))
-                        .foregroundColor(.clear)
+                    // Profile image
+                    ProfileImageView(size: 40, lineWidth: 2)
                         .padding(.trailing, 20)
                 }
                 .padding(.top, 50)

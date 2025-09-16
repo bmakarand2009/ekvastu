@@ -646,11 +646,6 @@ struct PhotoFullScreenView: View {
 }
 
 // MARK: - Extensions
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCornerShape(radius: radius, corners: corners))
-    }
-}
 
 struct RoundedCornerShape: Shape {
     var radius: CGFloat = .infinity

@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 // MARK: - Room Service
+@MainActor
 class RoomService: ObservableObject {
     static let shared = RoomService()
     
@@ -28,13 +29,14 @@ class RoomService: ObservableObject {
             return
         }
         
-        networkService.request<RoomResponse>(
+        let publisher: AnyPublisher<RoomResponse, NetworkError> = networkService.request(
             endpoint: .createRoom(propertyId),
             method: .POST,
             body: requestData,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -44,7 +46,7 @@ class RoomService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: RoomResponse) in
+            receiveValue: { response in
                 print("📥 Room created successfully")
                 completion(.success(response))
             }
@@ -56,13 +58,14 @@ class RoomService: ObservableObject {
     func getRoomsInProperty(propertyId: String, completion: @escaping (Result<RoomsResponse, NetworkError>) -> Void) {
         print("🏠 Fetching rooms in property: \(propertyId)")
         
-        networkService.request<RoomsResponse>(
+        let publisher: AnyPublisher<RoomsResponse, NetworkError> = networkService.request(
             endpoint: .getRoomsInProperty(propertyId),
             method: .GET,
             body: nil,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -72,7 +75,7 @@ class RoomService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: RoomsResponse) in
+            receiveValue: { response in
                 print("📥 Rooms fetched: \(response.data?.count ?? 0) rooms")
                 completion(.success(response))
             }
@@ -84,13 +87,14 @@ class RoomService: ObservableObject {
     func getRoom(id: String, completion: @escaping (Result<RoomResponse, NetworkError>) -> Void) {
         print("🔍 Fetching room: \(id)")
         
-        networkService.request<RoomResponse>(
+        let publisher: AnyPublisher<RoomResponse, NetworkError> = networkService.request(
             endpoint: .getRoom(id),
             method: .GET,
             body: nil,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -100,7 +104,7 @@ class RoomService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: RoomResponse) in
+            receiveValue: { response in
                 print("📥 Room fetched successfully")
                 completion(.success(response))
             }
@@ -124,13 +128,14 @@ class RoomService: ObservableObject {
             return
         }
         
-        networkService.request<RoomResponse>(
+        let publisher: AnyPublisher<RoomResponse, NetworkError> = networkService.request(
             endpoint: .updateRoom(id),
             method: .PUT,
             body: requestData,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -140,7 +145,7 @@ class RoomService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: RoomResponse) in
+            receiveValue: { response in
                 print("📥 Room updated successfully")
                 completion(.success(response))
             }

@@ -3,6 +3,7 @@ import Combine
 import FirebaseAuth
 
 // MARK: - Profile Manager
+@MainActor
 class ProfileManager: ObservableObject {    
     // Simple authentication check without retry
     private func checkAuthentication() -> Bool {

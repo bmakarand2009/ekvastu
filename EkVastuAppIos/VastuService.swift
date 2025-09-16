@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class VastuService: ObservableObject {
     static let shared = VastuService()
     private let network = NetworkService.shared

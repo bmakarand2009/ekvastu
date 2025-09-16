@@ -198,7 +198,12 @@ class CameraService: NSObject, ObservableObject {
         if session.canAddOutput(output) {
             print("Adding photo output to session")
             session.addOutput(output)
-            output.isHighResolutionCaptureEnabled = true
+            // Use maxPhotoDimensions instead of deprecated isHighResolutionCaptureEnabled
+            if #available(iOS 16.0, *) {
+                output.maxPhotoDimensions = .init(width: 4032, height: 3024) // High resolution dimensions
+            } else {
+                output.isHighResolutionCaptureEnabled = true // Fallback for older iOS versions
+            }
             output.maxPhotoQualityPrioritization = .quality
         } else {
             print("Cannot add photo output to session")

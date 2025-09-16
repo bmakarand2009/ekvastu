@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 // MARK: - Profile Service
+@MainActor
 class ProfileService: ObservableObject {
     static let shared = ProfileService()
     

@@ -86,7 +86,7 @@ struct UserDetailsForm: View {
                         Spacer()
                         
                         // Profile icon
-                        ProfileImageView(size: 24)
+                        ProfileImageView(size: 40, lineWidth: 2)
                             .padding(.trailing, 20)
                             .padding(.top, 30)
                     }

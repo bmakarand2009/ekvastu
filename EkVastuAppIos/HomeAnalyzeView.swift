@@ -412,7 +412,7 @@ struct HomeAnalyzeView: View {
             Button(action: {
                 // Handle profile
             }) {
-                ProfileImageView(size: 24)
+                ProfileImageView(size: 40, lineWidth: 2)
             }
             .buttonStyle(.plain)
         }

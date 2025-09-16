@@ -72,7 +72,7 @@ struct SignInPage: View {
                             .accentColor(.black) // Make cursor visible
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
-                            .onChange(of: email) { _ in
+                            .onChange(of: email) { oldValue, newValue in
                                 emailEdited = true
                                 validateEmail()
                             }
@@ -106,7 +106,7 @@ struct SignInPage: View {
                                     .stroke(passwordError != nil && passwordEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
                             .accentColor(.black) // Make cursor visible
-                            .onChange(of: password) { _ in
+                            .onChange(of: password) { oldValue, newValue in
                                 passwordEdited = true
                                 validatePassword()
                             }
@@ -225,16 +225,18 @@ struct SignInPage: View {
                     EmptyView()
                 } else {
                     // Always navigate to UserDetailsForm after Google Sign-In
-                    NavigationLink(destination: UserDetailsForm(), isActive: $showHomeView) {
-                        EmptyView()
-                    }
+                    EmptyView()
+                        .navigationDestination(isPresented: $showHomeView) {
+                            UserDetailsForm()
+                        }
                 }
             }
             
             // Navigation to forgot password
-            NavigationLink(destination: ForgotPasswordView(), isActive: $showForgotPassword) {
-                EmptyView()
-            }
+            EmptyView()
+                .navigationDestination(isPresented: $showForgotPassword) {
+                    ForgotPasswordView()
+                }
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(leading: EmptyView())
@@ -380,11 +382,6 @@ struct SignInPage: View {
         
         // Get the root view controller
         let rootViewController = UIApplication.getRootViewController()
-        if rootViewController == nil {
-            self.isLoading = false
-            self.errorMessage = "Cannot present sign-in screen"
-            return
-        }
         
         // Use Firebase Google Sign-In
         authManager.signInWithGoogle(presenting: rootViewController) { success in
@@ -533,7 +530,7 @@ struct ForgotPasswordView: View {
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
                     .accentColor(.black) // Make cursor visible
-                    .onChange(of: email) { _ in
+                    .onChange(of: email) { oldValue, newValue in
                         emailEdited = true
                         validateEmail()
                     }

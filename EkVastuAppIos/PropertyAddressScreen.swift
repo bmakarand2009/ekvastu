@@ -81,6 +81,10 @@ struct PropertyAddressScreen: View {
                             .padding(.top, 30)
                         
                         Spacer()
+                        
+                        // Profile image
+                        ProfileImageView(size: 40, lineWidth: 2)
+                            .padding(.trailing, 10)
                     }
                     .padding(.top, 20)
                     

@@ -138,7 +138,7 @@ struct ConsultView: View {
             .buttonStyle(.plain)
             
             // Profile image
-            ProfileImageView(size: 24)
+            ProfileImageView(size: 40, lineWidth: 2)
              
         }
         .padding(.horizontal, 20)

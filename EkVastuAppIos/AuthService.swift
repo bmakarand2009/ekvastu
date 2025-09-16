@@ -3,6 +3,7 @@ import Combine
 import FirebaseAuth
 
 // MARK: - Authentication Service
+@MainActor
 class AuthService: ObservableObject {
     static let shared = AuthService()
     
@@ -611,46 +612,33 @@ class AuthService: ObservableObject {
         completion: @escaping (Result<SignUpResponse, NetworkError>) -> Void
     ) {
         print("📝 Starting sign up process for user: \(email)")
-        print("🏢 First getting tenant info to retrieve tenantId...")
         
         isLoading = true
         errorMessage = nil
         
-        // Step 1: Get tenant info to retrieve tenantId
-        getTenantInfo { [weak self] tenantResult in
-            switch tenantResult {
-            case .success(let tenantInfo):
-                print("✅ Tenant info retrieved, tenantId: \(tenantInfo.tenantId)")
-                
-                // Step 2: Use the tenantId from tenant response for signup
-                self?.performSignUp(
-                    name: name,
-                    email: email,
-                    tenantId: tenantInfo.tenantId,
-                    lastName: lastName,
-                    phone: phone,
-                    referral: referral,
-                    interestedIn: interestedIn,
-                    leadSource: leadSource,
-                    description: description,
-                    line1: line1,
-                    city: city,
-                    state: state,
-                    zip: zip,
-                    country: country,
-                    timezone: timezone,
-                    completion: completion
-                )
-                
-            case .failure(let error):
-                print("❌ Failed to get tenant info: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    self?.errorMessage = "Failed to get tenant configuration"
-                    completion(.failure(error))
-                }
-            }
-        }
+        // Always use tidDebug or tidRelease from APIConfig
+        let tid = networkService.getCurrentTenantId()
+        print("✅ Using tenant ID from APIConfig: \(tid)")
+        
+        // Use the tid directly for signup
+        self.performSignUp(
+            name: name,
+            email: email,
+            tenantId: tid,
+            lastName: lastName,
+            phone: phone,
+            referral: referral,
+            interestedIn: interestedIn,
+            leadSource: leadSource,
+            description: description,
+            line1: line1,
+            city: city,
+            state: state,
+            zip: zip,
+            country: country,
+            timezone: timezone,
+            completion: completion
+        )
     }
     
     // MARK: - Internal Sign Up Method

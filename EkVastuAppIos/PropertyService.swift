@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 // MARK: - Property Service
+@MainActor
 class PropertyService: ObservableObject {
     static let shared = PropertyService()
     

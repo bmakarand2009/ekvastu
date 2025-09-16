@@ -20,7 +20,7 @@ struct AddressSearchView: View {
                     
                     TextField("Search for address", text: $searchText)
                         .accentColor(.black) // Make cursor visible
-                        .onChange(of: searchText) { newValue in
+                        .onChange(of: searchText) { oldValue, newValue in
                             if !newValue.isEmpty && newValue.count > 2 {
                                 fetchPredictions(for: newValue)
                             } else {
@@ -76,7 +76,7 @@ struct AddressSearchView: View {
         
         let token = GMSAutocompleteSessionToken.init()
         let filter = GMSAutocompleteFilter()
-        filter.type = .address
+        filter.types = ["address"]
         // Remove country restriction to enable worldwide address search
         
         GMSPlacesClient.shared().findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: token) { predictions, error in
@@ -96,7 +96,8 @@ struct AddressSearchView: View {
     private func selectAddress(_ prediction: GMSAutocompletePrediction) {
         let token = GMSAutocompleteSessionToken.init()
         
-        GMSPlacesClient.shared().fetchPlace(fromPlaceID: prediction.placeID, placeFields: [.name, .formattedAddress, .coordinate], sessionToken: token) { place, error in
+        let placeRequest = GMSFetchPlaceRequest(placeID: prediction.placeID, placeProperties: ["name", "formatted_address", "geometry"], sessionToken: token)
+        GMSPlacesClient.shared().fetchPlace(with: placeRequest) { place, error in
             if let error = error {
                 print("Error fetching place details: \(error.localizedDescription)")
                 onAddressSelected(prediction.attributedFullText.string, nil)

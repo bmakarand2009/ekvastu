@@ -5,9 +5,8 @@ struct ProfileImageView: View {
     var lineWidth: CGFloat = 1
     @State private var profileImage: UIImage?
     @State private var isLoading = false
-    @State private var showingPopup = false
+    @State private var showingActionSheet = false
     @State private var navigateToOnboarding = false
-    @State private var showingPopover = false
     
     var body: some View {
         ZStack {
@@ -30,11 +29,7 @@ struct ProfileImageView: View {
             }
         }
         .onTapGesture {
-            showingPopover = true
-        }
-        .popover(isPresented: $showingPopover, attachmentAnchor: .point(.trailing), arrowEdge: .top) {
-            ProfilePopupView(isShowing: $showingPopover, onLogout: handleLogout)
-                .presentationCompactAdaptation(.popover)
+            showingActionSheet = true
         }
         .onAppear {
             loadProfileImage()
@@ -42,6 +37,13 @@ struct ProfileImageView: View {
         .fullScreenCover(isPresented: $navigateToOnboarding) {
             // Navigate to onboarding screen after logout
             OnboardingView()
+        }
+        .fullScreenCover(isPresented: $showingActionSheet) {
+            ZStack {
+                Color.clear.background(.ultraThinMaterial)
+                ProfileActionSheetView(isShowing: $showingActionSheet, onLogout: handleLogout)
+            }
+            .edgesIgnoringSafeArea(.all)
         }
     }
     

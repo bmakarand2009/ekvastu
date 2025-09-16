@@ -142,6 +142,7 @@ enum NetworkError: Error, LocalizedError {
 }
 
 // MARK: - Network Service
+@MainActor
 class NetworkService: ObservableObject {
     static let shared = NetworkService()
     

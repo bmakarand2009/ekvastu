@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 // MARK: - Photo Service
+@MainActor
 class PhotoService: ObservableObject {
     static let shared = PhotoService()
     
@@ -33,13 +34,14 @@ class PhotoService: ObservableObject {
         // Use special endpoint for URL-based photo addition
         let endpoint: APIEndpoint = .addPhotoWithURL(roomId)
         
-        networkService.request<PhotoResponse>(
+        let publisher: AnyPublisher<PhotoResponse, NetworkError> = networkService.request(
             endpoint: endpoint,
             method: .POST,
             body: requestData,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -49,7 +51,7 @@ class PhotoService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: PhotoResponse) in
+            receiveValue: { response in
                 print("📥 Photo added successfully")
                 completion(.success(response))
             }
@@ -61,13 +63,14 @@ class PhotoService: ObservableObject {
     func getPhotosInRoom(roomId: String, completion: @escaping (Result<PhotosResponse, NetworkError>) -> Void) {
         print("📷 Fetching photos in room: \(roomId)")
         
-        networkService.request<PhotosResponse>(
+        let publisher: AnyPublisher<PhotosResponse, NetworkError> = networkService.request(
             endpoint: .getPhotosInRoom(roomId),
             method: .GET,
             body: nil,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -77,7 +80,7 @@ class PhotoService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: PhotosResponse) in
+            receiveValue: { response in
                 print("📥 Photos fetched: \(response.data?.count ?? 0) photos")
                 completion(.success(response))
             }
@@ -89,13 +92,14 @@ class PhotoService: ObservableObject {
     func deletePhoto(id: String, completion: @escaping (Result<DeleteResponse, NetworkError>) -> Void) {
         print("🗑️ Deleting photo: \(id)")
         
-        networkService.request<DeleteResponse>(
+        let publisher: AnyPublisher<DeleteResponse, NetworkError> = networkService.request(
             endpoint: .deletePhoto(id),
             method: .DELETE,
             body: nil,
             headers: nil
         )
-        .sink(
+        
+        publisher.sink(
             receiveCompletion: { completionResult in
                 switch completionResult {
                 case .finished:
@@ -105,7 +109,7 @@ class PhotoService: ObservableObject {
                     completion(.failure(error))
                 }
             },
-            receiveValue: { (response: DeleteResponse) in
+            receiveValue: { response in
                 print("📥 Photo deleted successfully")
                 completion(.success(response))
             }

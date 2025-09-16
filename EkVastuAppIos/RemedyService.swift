@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 class RemedyService {
     private let networkService = NetworkService.shared
     private let baseURL = "https://ekshakti-portal.onrender.com"

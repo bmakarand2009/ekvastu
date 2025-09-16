@@ -221,7 +221,7 @@ struct VastuScoreView: View {
                 
                 // Profile image
                 Button(action: {}) {
-                    ProfileImageView(size: 30)
+                    ProfileImageView(size: 40, lineWidth: 2)
                 }
                 .buttonStyle(.plain)
                  

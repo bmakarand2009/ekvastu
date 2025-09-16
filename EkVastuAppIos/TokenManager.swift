@@ -82,7 +82,8 @@ class TokenManager: ObservableObject {
     
     // MARK: - Token Access
     nonisolated func getAuthorizationHeader() -> String? {
-        guard let token = userDefaults.string(forKey: accessTokenKey) else {
+        // Using UserDefaults directly to avoid actor isolation issues
+        guard let token = UserDefaults.standard.string(forKey: accessTokenKey) else {
             print("⚠️ TokenManager: No access token available")
             return nil
         }
@@ -90,7 +91,7 @@ class TokenManager: ObservableObject {
     }
     
     nonisolated func hasValidToken() -> Bool {
-        guard let token = userDefaults.string(forKey: accessTokenKey), !token.isEmpty else {
+        guard let token = UserDefaults.standard.string(forKey: accessTokenKey), !token.isEmpty else {
             return false
         }
         
@@ -129,7 +130,7 @@ class TokenManager: ObservableObject {
     
     // MARK: - Token Refresh (Future Implementation)
     func refreshTokenIfNeeded() async throws {
-        guard let refreshToken = refreshToken else {
+        guard refreshToken != nil else {
             throw TokenError.noRefreshToken
         }
         

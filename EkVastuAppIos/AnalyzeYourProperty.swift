@@ -32,7 +32,7 @@ struct AnalyzeYourProperty: View {
             ConsultView()
                 .tabItem {
                     Image(systemName: "message.fill")
-                    Text("Coffee With Jaya")
+                    Text("Consult")
                 }
                 .tag(3)
         }
@@ -85,7 +85,10 @@ struct AnalyzeYourProperty: View {
         
         // Force override system behavior
         DispatchQueue.main.async {
-            if let tabBar = UIApplication.shared.windows.first?.rootViewController?.view.subviews.first(where: { $0 is UITabBar }) as? UITabBar {
+            // Use UIWindowScene.windows instead of deprecated UIApplication.shared.windows
+            let scenes = UIApplication.shared.connectedScenes
+            let windowScene = scenes.first as? UIWindowScene
+            if let tabBar = windowScene?.windows.first?.rootViewController?.view.subviews.first(where: { $0 is UITabBar }) as? UITabBar {
                 tabBar.standardAppearance = appearance
                 if #available(iOS 15.0, *) {
                     tabBar.scrollEdgeAppearance = appearance
