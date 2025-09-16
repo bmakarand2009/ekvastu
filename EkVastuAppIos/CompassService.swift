@@ -59,9 +59,13 @@ class CompassService: NSObject, ObservableObject {
             print("Compass not available on this device")
             return
         }
-        // Request location permission if needed for true heading
-        if locationManager.authorizationStatus == .notDetermined {
-            locationManager.requestWhenInUseAuthorization()
+        // Check authorization status without blocking the main thread
+        let status = locationManager.authorizationStatus
+        if status == .notDetermined {
+            // Request permission asynchronously
+            DispatchQueue.main.async { [weak self] in
+                self?.locationManager.requestWhenInUseAuthorization()
+            }
         } else {
             startAuthorizedUpdates()
         }

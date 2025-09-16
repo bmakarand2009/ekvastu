@@ -8,6 +8,7 @@ struct HomeAnalyzeView: View {
 
     @State private var backendRooms: [RoomData] = []
     @State private var selectedRoom: String? = nil // Now stores room ID instead of room name
+    @State private var selectedRoomData: RoomData? = nil // Store the actual room data for camera view
     @State private var showAddRoomField = false
     @State private var newRoomName = ""
     @State private var showAlert = false
@@ -122,7 +123,7 @@ struct HomeAnalyzeView: View {
         }
         // Camera for regular room analysis
         .fullScreenCover(isPresented: $showCameraView) {
-            if let roomId = selectedRoom, let room = allRooms.first(where: { $0.id == roomId }) {
+            if let room = selectedRoomData {
                 RoomCameraView(
                     roomId: room.id,
                     roomName: room.name,
@@ -349,6 +350,7 @@ struct HomeAnalyzeView: View {
                     } else {
                         self.existingPhotosForCamera = existing
                         self.maxPhotosForCamera = 4
+                        self.selectedRoomData = room  // Store the room data
                         self.showCameraView = true
                     }
                 case .failure(let error):

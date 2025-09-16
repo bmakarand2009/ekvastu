@@ -198,11 +198,27 @@ class CameraService: NSObject, ObservableObject {
         if session.canAddOutput(output) {
             print("Adding photo output to session")
             session.addOutput(output)
-            // Use maxPhotoDimensions instead of deprecated isHighResolutionCaptureEnabled
+            
+            // Configure photo output based on device capabilities
             if #available(iOS 16.0, *) {
-                output.maxPhotoDimensions = .init(width: 4032, height: 3024) // High resolution dimensions
+                // Get the active format's supported dimensions from the video device input
+                if let device = videoDeviceInput?.device,
+                   let activeFormat = device.activeFormat as? AVCaptureDevice.Format {
+                    let supportedDimensions = activeFormat.supportedMaxPhotoDimensions
+                    // Use the highest resolution available
+                    let sortedDimensions = supportedDimensions.sorted { first, second in
+                        let firstPixels = Int(first.width) * Int(first.height)
+                        let secondPixels = Int(second.width) * Int(second.height)
+                        return firstPixels > secondPixels
+                    }
+                    if let maxDimension = sortedDimensions.first {
+                        output.maxPhotoDimensions = maxDimension
+                        print("Set maxPhotoDimensions to: \(maxDimension.width)x\(maxDimension.height)")
+                    }
+                }
             } else {
-                output.isHighResolutionCaptureEnabled = true // Fallback for older iOS versions
+                // Fallback for older iOS versions
+                output.isHighResolutionCaptureEnabled = true
             }
             output.maxPhotoQualityPrioritization = .quality
         } else {
