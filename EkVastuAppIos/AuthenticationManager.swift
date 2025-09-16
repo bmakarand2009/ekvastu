@@ -3,6 +3,7 @@ import Firebase
 import FirebaseAuth
 import GoogleSignIn
 
+@MainActor
 class AuthenticationManager: ObservableObject {
     @Published var user: User?
     @Published var isAuthenticated = false
@@ -17,11 +18,9 @@ class AuthenticationManager: ObservableObject {
     
     init() {
         // Set up Firebase auth state listener
-        Auth.auth().addStateDidChangeListener { [weak self] (auth, user) in
-            DispatchQueue.main.async {
-                self?.user = user
-                self?.isAuthenticated = user != nil
-            }
+        _ = Auth.auth().addStateDidChangeListener { [weak self] (_, user) in
+            self?.user = user
+            self?.isAuthenticated = user != nil
         }
         
         // Check Firebase auth state and clear local data if account doesn't exist
@@ -73,17 +72,14 @@ class AuthenticationManager: ObservableObject {
         self.isAuthenticated = true
         
         // Set up notification observer for Google Sign-In restoration
-        NotificationCenter.default.addObserver(forName: Notification.Name("GoogleSignInRestored"), object: nil, queue: .main) { [weak self] notification in
-            if let googleUser = notification.userInfo?["user"] as? GIDGoogleUser,
-               let idToken = googleUser.idToken?.tokenString {
-                print("Received Google Sign-In restoration notification")
-                
-                // Firebase Auth is already handled in AppDelegate
-                // Just update the authentication state if needed
-                if self?.user == nil {
-                    self?.user = Auth.auth().currentUser
-                    self?.isAuthenticated = self?.user != nil
-                }
+        NotificationCenter.default.addObserver(forName: Notification.Name("GoogleSignInRestored"), object: nil, queue: .main) { [weak self] _ in
+            print("Received Google Sign-In restoration notification")
+            
+            // Firebase Auth is already handled in AppDelegate
+            // Just update the authentication state if needed
+            if self?.user == nil {
+                self?.user = Auth.auth().currentUser
+                self?.isAuthenticated = self?.user != nil
             }
         }
     }
@@ -101,11 +97,9 @@ class AuthenticationManager: ObservableObject {
                     // Sign out and clear data to be safe
                     self?.clearAllUserData()
                 }
-            } else if token != nil {
+            } else if let _ = token {
                 print("✓ Got fresh token - account is valid")
-                DispatchQueue.main.async {
-                    self?.handleValidFirebaseAccount(user: user)
-                }
+                self?.handleValidFirebaseAccount(user: user)
             } else {
                 print("✗ No token received - clearing data")
                 self?.clearAllUserData()
@@ -391,7 +385,7 @@ class AuthenticationManager: ObservableObject {
         }
         
         // Create GIDConfiguration with the correct client ID
-        let config = GIDConfiguration(clientID: clientID)
+        _ = GIDConfiguration(clientID: clientID) // Initialize per SDK requirements (unused variable suppressed)
         
         print("Using Firebase client ID: \(clientID)")
         
@@ -478,10 +472,10 @@ class AuthenticationManager: ObservableObject {
                         print("⚠️ OAuth client ID mismatch detected - using direct backend authentication")
                         
                         // Skip Firebase and call backend directly with the Google ID token
-                        AuthService.shared.googleLogin(idToken: idToken) { result in
-                            DispatchQueue.main.async {
+                        Task { @MainActor in
+                            AuthService.shared.googleLogin(idToken: idToken) { result in
                                 switch result {
-                                case .success(let response):
+                                case .success:
                                     print("✅ Direct backend Google login successful")
                                     completion(true)
                                 case .failure(let error):
@@ -619,31 +613,64 @@ class AuthenticationManager: ObservableObject {
     }
     
     func checkUserStatus(completion: @escaping () -> Void) {
-        // Set flag to indicate we're checking user status
+        // Show busy indicator while determining routing
         AuthenticationManager.isCheckingUserStatus = true
-        
-        // Check if user details exist in local storage
-        UserDetails.fetchFromLocalStorage { userDetails, error in
-            if let _ = userDetails {
-                AuthenticationManager.hasCompletedUserDetails = true
-                
-                // Check if property address exists
-                PropertyAddress.fetchFromLocalStorage { addresses, error in
-                    if let addresses = addresses, !addresses.isEmpty {
-                        AuthenticationManager.hasCompletedPropertyAddress = true
+
+        // 10s timeout: stop busy signal and fall back to UserDetailsForm
+        let timeoutSeconds: TimeInterval = 10
+        var finished = false
+        let timeoutWork = DispatchWorkItem { [weak self] in
+            guard let _ = self, !finished else { return }
+            finished = true
+            AuthenticationManager.isCheckingUserStatus = false
+            AuthenticationManager.hasCompletedUserDetails = false
+            AuthenticationManager.hasCompletedPropertyAddress = false
+            completion()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeoutSeconds, execute: timeoutWork)
+
+        // Call profile service immediately after authentication on the main actor
+        Task { @MainActor in
+            ProfileService.shared.checkProfile { result in
+                if finished { return }
+                finished = true
+                timeoutWork.cancel()
+
+                switch result {
+                case .success(let response):
+                    if response.success, let profile = response.data {
+                        // Cache into shared ProfileManager so UI can consume without refetching
+                        ProfileManager.shared.currentProfile = profile
+                        ProfileManager.shared.profileExists = true
+
+                        let dobOk = !profile.dob.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        let tobOk = !profile.timeOfBirth.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        let pobOk = !profile.placeOfBirth.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+                        if dobOk && tobOk && pobOk {
+                            // Skip UserDetailsForm -> go to PropertyAddress step next
+                            AuthenticationManager.hasCompletedUserDetails = true
+                            AuthenticationManager.hasCompletedPropertyAddress = false
+                        } else {
+                            // Incomplete -> show UserDetailsForm
+                            AuthenticationManager.hasCompletedUserDetails = false
+                            AuthenticationManager.hasCompletedPropertyAddress = false
+                        }
                     } else {
+                        // No profile found -> show UserDetailsForm
+                        ProfileManager.shared.currentProfile = nil
+                        ProfileManager.shared.profileExists = false
+                        AuthenticationManager.hasCompletedUserDetails = false
                         AuthenticationManager.hasCompletedPropertyAddress = false
                     }
-                    
-                    // Reset flag when done checking
-                    AuthenticationManager.isCheckingUserStatus = false
-                    completion()
+                case .failure:
+                    // Network/auth error -> stop spinner and show UserDetailsForm
+                    ProfileManager.shared.currentProfile = nil
+                    ProfileManager.shared.profileExists = false
+                    AuthenticationManager.hasCompletedUserDetails = false
+                    AuthenticationManager.hasCompletedPropertyAddress = false
                 }
-            } else {
-                AuthenticationManager.hasCompletedUserDetails = false
-                AuthenticationManager.hasCompletedPropertyAddress = false
-                
-                // Reset flag when done checking
+
                 AuthenticationManager.isCheckingUserStatus = false
                 completion()
             }
@@ -721,14 +748,17 @@ extension UIApplication {
         var rootViewController: UIViewController?
         
         // First try scene-based approach (iOS 13+)
-        if #available(iOS 13.0, *) {
-            rootViewController = UIApplication.shared.windows
-                .filter { $0.isKeyWindow }
-                .first?.rootViewController
-        }
-        
-        // Fallback for older iOS versions or if scene-based approach failed
-        if rootViewController == nil {
+        if #available(iOS 15.0, *) {
+            // Preferred: use connected scenes to get key window
+            let scenes = UIApplication.shared.connectedScenes
+            let windowScene = scenes.first { $0.activationState == .foregroundActive } as? UIWindowScene
+            rootViewController = windowScene?.windows.first { $0.isKeyWindow }?.rootViewController
+        } else if #available(iOS 13.0, *) {
+            let scenes = UIApplication.shared.connectedScenes
+            let windowScene = scenes.first as? UIWindowScene
+            rootViewController = windowScene?.windows.first { $0.isKeyWindow }?.rootViewController
+        } else {
+            // Very old iOS fallback
             rootViewController = UIApplication.shared.keyWindow?.rootViewController
         }
         

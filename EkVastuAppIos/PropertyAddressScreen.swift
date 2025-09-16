@@ -256,21 +256,28 @@ struct PropertyAddressScreen: View {
             )
         }
         .sheet(isPresented: $showChangeAddressSheet) {
-            AddressSearchView(onAddressSelected: { address, coordinate in
+            AddressSearchView(onAddressSelected: { address, coordinate, postal in
                 self.location = address.components(separatedBy: ",").first ?? address
                 self.completeAddress = address
                 
-                if let coordinate = coordinate {
+                if let postal = postal, !postal.isEmpty {
+                    self.pincode = postal
+                } else if let coordinate = coordinate {
                     self.mapCenter = coordinate
                     self.mapMarker = coordinate
                     
-                    // Get pincode from reverse geocoding
+                    // Fallback: Get pincode from reverse geocoding
                     let geocoder = CLGeocoder()
                     geocoder.reverseGeocodeLocation(CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)) { placemarks, error in
                         if let placemark = placemarks?.first {
                             self.pincode = placemark.postalCode ?? ""
                         }
                     }
+                }
+                
+                if let coordinate = coordinate {
+                    self.mapCenter = coordinate
+                    self.mapMarker = coordinate
                 }
             })
         }

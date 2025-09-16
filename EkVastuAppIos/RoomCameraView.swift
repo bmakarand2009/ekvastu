@@ -409,7 +409,12 @@ struct RoomCameraView: View {
             let view = VideoPreviewView()
             view.backgroundColor = .black
             view.videoPreviewLayer.videoGravity = .resizeAspectFill
-            view.videoPreviewLayer.connection?.videoOrientation = .portrait
+            if #available(iOS 17.0, *) {
+                // 0 = portrait; 90/180/270 for other orientations
+                view.videoPreviewLayer.connection?.videoRotationAngle = 0
+            } else {
+                view.videoPreviewLayer.connection?.videoOrientation = .portrait
+            }
             view.session = session
             
             DispatchQueue.main.async {

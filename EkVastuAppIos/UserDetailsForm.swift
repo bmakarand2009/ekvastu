@@ -336,19 +336,13 @@ struct UserDetailsForm: View {
             .onAppear {
                 print("🔄 UserDetailsForm appeared, forceRefresh: \(forceRefresh)")
                 
-                // Always check profile from backend first
-                checkProfileStatus()
-                
+                // Do NOT call profile API here anymore; rely on AuthenticationManager cache via ProfileManager
                 // Load existing user details from Keychain when view appears
                 loadUserDetailsFromKeychain()
                 
-                // Force refresh profile data if needed
-                if forceRefresh {
-                    print("🔄 Forcing profile refresh from API")
-                    // Add a slight delay to ensure view is fully presented
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        profileManager.checkAndLoadProfile()
-                    }
+                // If we have a cached profile, populate; otherwise the form remains empty for user input
+                if let cached = profileManager.currentProfile {
+                    populateFormWithProfile(cached)
                 }
             }
             .onReceive(profileManager.$currentProfile) { profile in
@@ -379,8 +373,8 @@ struct UserDetailsForm: View {
                                         DispatchQueue.main.async {
                                             switch result {
                                             case .success:
-                                                // Tokens should be stored by AuthService; retry profile check
-                                                profileManager.checkAndLoadProfile()
+                                                // Tokens should be stored by AuthService; profile will be fetched on next auth cycle
+                                                break
                                             case .failure:
                                                 // Keep showing the message; user can try again or logout
                                                 break
@@ -407,8 +401,7 @@ struct UserDetailsForm: View {
     // MARK: - Profile Management
     
     private func checkProfileStatus() {
-        print("🔄 Checking profile status... forceRefresh: \(forceRefresh)")
-        profileManager.checkAndLoadProfile()
+        // Deprecated: profile fetching moved to AuthenticationManager.checkUserStatus
     }
     
     // Load user details from Keychain
@@ -675,6 +668,8 @@ struct UserDetailsForm: View {
             
             // Update authentication manager state
             AuthenticationManager.hasCompletedUserDetails = true
+            UserDefaults.standard.set(true, forKey: "hasCompletedUserDetails")
+            UserDefaults.standard.synchronize()
             
             // Hide profile message and show success
             showProfileMessage = false
@@ -695,6 +690,8 @@ struct UserDetailsForm: View {
     private func skipForm() {
         // Mark user details as completed (skipped)
         AuthenticationManager.hasCompletedUserDetails = true
+        UserDefaults.standard.set(true, forKey: "hasCompletedUserDetails")
+        UserDefaults.standard.synchronize()
         
         // Always navigate to PropertyAddressListScreen
         // Users can use "Add new address" button to start adding properties

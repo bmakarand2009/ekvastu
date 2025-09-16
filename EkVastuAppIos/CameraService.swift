@@ -202,8 +202,8 @@ class CameraService: NSObject, ObservableObject {
             // Configure photo output based on device capabilities
             if #available(iOS 16.0, *) {
                 // Get the active format's supported dimensions from the video device input
-                if let device = videoDeviceInput?.device,
-                   let activeFormat = device.activeFormat as? AVCaptureDevice.Format {
+                if let device = videoDeviceInput?.device {
+                    let activeFormat = device.activeFormat
                     let supportedDimensions = activeFormat.supportedMaxPhotoDimensions
                     // Use the highest resolution available
                     let sortedDimensions = supportedDimensions.sorted { first, second in

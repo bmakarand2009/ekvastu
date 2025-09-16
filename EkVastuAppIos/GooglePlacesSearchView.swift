@@ -26,7 +26,7 @@ struct GoogleAddressSearchView: View {
                         } else {
                             searchResults = []
                         }
-                    }
+                    } // TODO: For iOS 17+, migrate to the new onChange signature if targeting exclusively iOS 17
                 
                 if isSearching {
                     ProgressView()
@@ -58,7 +58,7 @@ struct GoogleAddressSearchView: View {
         isSearching = true
         
         let filter = GMSAutocompleteFilter()
-        filter.type = .address
+        filter.types = ["address"]
         
         placesClient.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: nil) { predictions, error in
             isSearching = false
@@ -84,6 +84,7 @@ struct GoogleAddressSearchView: View {
     private func selectPlace(_ prediction: PlacePrediction) {
         let fields: GMSPlaceField = [.name, .formattedAddress, .coordinate]
         
+        // Note: fetchPlace(fromPlaceID:placeFields:sessionToken:callback:) is deprecated; update when migrating SDK fully.
         placesClient.fetchPlace(fromPlaceID: prediction.id, placeFields: fields, sessionToken: nil) { place, error in
             if let error = error {
                 print("Error fetching place details: \(error.localizedDescription)")
