@@ -1,7 +1,7 @@
 import SwiftUI
 import Firebase
+import FirebaseAuth
 import GoogleSignIn
-
 
 struct SignInPage: View {
     @State private var email: String = ""
@@ -11,6 +11,7 @@ struct SignInPage: View {
     @State private var showCreateAccount = false
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
+    @State private var showErrorAlert = false
     
     // Validation state
     @State private var emailError: String? = nil
@@ -23,6 +24,9 @@ struct SignInPage: View {
     // Authentication state
     @ObservedObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var authService = AuthService.shared
+    
+    // NEW: Flag to prevent auto-navigation during Google Sign-In process
+    @State private var isProcessingGoogleSignIn = false
     
     var body: some View {
         ZStack {
@@ -43,10 +47,9 @@ struct SignInPage: View {
                         .scaledToFit()
                         .frame(width: 80, height: 80)
                         .padding(.top, 30)
-                        
-                        
                     }
                     .padding(.top, 40)
+                    
                     // Welcome text
                     Text("Vastu by EkShakti")
                         .font(.system(size: 22, weight: .bold))
@@ -69,7 +72,7 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .accentColor(.black) // Make cursor visible
+                            .accentColor(.black)
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .onChange(of: email) { oldValue, newValue in
@@ -77,7 +80,6 @@ struct SignInPage: View {
                                 validateEmail()
                             }
                             .onAppear {
-                                // Focus on this field when view appears
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                     UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
                                 }
@@ -105,7 +107,7 @@ struct SignInPage: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(passwordError != nil && passwordEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .accentColor(.black) // Make cursor visible
+                            .accentColor(.black)
                             .onChange(of: password) { oldValue, newValue in
                                 passwordEdited = true
                                 validatePassword()
@@ -123,37 +125,33 @@ struct SignInPage: View {
                     // Forgot password link
                     HStack {
                         Spacer()
-                   
-                            Text("Forgot Password?")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(hex: "#4A2511"))
-                                .onTapGesture {
-                                    showForgotPassword = true
-                                }
-                        
+                        Text("Forgot Password?")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#4A2511"))
+                            .onTapGesture {
+                                showForgotPassword = true
+                            }
                     }
                     .padding(.horizontal)
                 
                     // Sign In button
-                
-                        Text("Sign In")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .onTapGesture {
-                                if validateForm() {
-                                    signInWithEmail()
-                                }
+                    Text("Sign In")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .onTapGesture {
+                            if validateForm() {
+                                signInWithEmail()
                             }
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(hex: "#4A2511"))
-                            )
-                    
-                    .padding(.horizontal)
-                    .disabled(!formIsValid())
-                    .opacity(formIsValid() ? 1.0 : 0.5)
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(hex: "#4A2511"))
+                        )
+                        .padding(.horizontal)
+                        .disabled(!formIsValid())
+                        .opacity(formIsValid() ? 1.0 : 0.5)
                 
                     // OR divider
                     HStack {
@@ -169,28 +167,27 @@ struct SignInPage: View {
                             .fill(Color.gray.opacity(0.3))
                             .frame(height: 1)
                     }
-                    
                 
                     // Google sign in button
-              
-                        HStack {
-                            Image("google")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                                
-                            Text("Sign in with Google")
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .onTapGesture {
-                            handleGoogleSignIn()
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white)
-                        ).padding(.horizontal)
+                    HStack {
+                        Image("google")
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                            
+                        Text("Sign in with Google")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .onTapGesture {
+                        handleGoogleSignIn()
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.white)
+                    )
+                    .padding(.horizontal)
                     
                     // Don't have an account link
                     HStack {
@@ -200,9 +197,8 @@ struct SignInPage: View {
                         NavigationLink(destination: CreateAccountPage(showCreateAccount: $showCreateAccount)) {
                             Text("Sign up")
                                 .font(.system(size: 16, weight: .bold))
-                               
-                               
-                        }.buttonStyle(.plain)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.vertical, 20)
                     
@@ -217,16 +213,22 @@ struct SignInPage: View {
                 .padding(.bottom, 30)
             }
             
-            
-            // Navigation to appropriate view based on user status
+            // FIXED: Only navigate when explicitly allowed and not processing Google Sign-In
             Group {
                 if AuthenticationManager.isCheckingUserStatus {
-                    // This is a placeholder - the actual navigation happens in checkUserStatus completion
                     EmptyView()
                 } else {
-                    // Always navigate to UserDetailsForm after Google Sign-In
                     EmptyView()
-                        .navigationDestination(isPresented: $showHomeView) {
+                        .navigationDestination(isPresented: Binding<Bool>(
+                            get: {
+                                // Only allow navigation if we're not processing Google Sign-In
+                                // and showHomeView is true
+                                return showHomeView && !isProcessingGoogleSignIn
+                            },
+                            set: { newValue in
+                                showHomeView = newValue
+                            }
+                        )) {
                             UserDetailsForm()
                         }
                 }
@@ -240,10 +242,30 @@ struct SignInPage: View {
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(leading: EmptyView())
+        .alert("Login Error", isPresented: $showErrorAlert) {
+            Button("OK") {
+                showErrorAlert = false
+                errorMessage = nil
+            }
+        } message: {
+            Text(errorMessage ?? "An error occurred during login. Please try again.")
+        }
+        // FIXED: Override auth state changes during Google Sign-In process
+        .onReceive(authManager.$isAuthenticated) { isAuthenticated in
+            // If we're processing Google Sign-In and auth state changes to true,
+            // don't automatically navigate - wait for backend validation
+            if isProcessingGoogleSignIn && isAuthenticated {
+                print("🚫 Preventing auto-navigation during Google Sign-In backend validation")
+                // Reset the auth state to prevent automatic navigation
+                DispatchQueue.main.async {
+                    authManager.isAuthenticated = false
+                }
+            }
+        }
     }
     
     private func formIsValid() -> Bool {
-        return emailError == nil && passwordError == nil && 
+        return emailError == nil && passwordError == nil &&
                !email.isEmpty && !password.isEmpty
     }
     
@@ -274,10 +296,8 @@ struct SignInPage: View {
     }
     
     private func validateForm() -> Bool {
-        // Trigger validation for all fields
         validateEmail()
         validatePassword()
-        
         return emailError == nil && passwordError == nil
     }
     
@@ -287,7 +307,6 @@ struct SignInPage: View {
         isLoading = true
         errorMessage = nil
         
-        // Use the new email login API
         authService.emailLogin(
             email: email,
             password: password
@@ -298,36 +317,42 @@ struct SignInPage: View {
                 switch result {
                 case .success(let response):
                     print("✅ Email login successful")
-                    print("User: \(response.contact.fullName)")
-                    print("Email: \(response.email)")
-                    print("Role: \(response.role)")
-                    
-                    // Store user data locally
                     self.storeUserDataLocally(response: response)
-                    
-                    // Set authentication state
                     self.authManager.isAuthenticated = true
-                    
-                    // Navigate to appropriate screen
                     self.showHomeView = true
                     
                 case .failure(let error):
                     print("❌ Email login failed: \(error.localizedDescription)")
-                    self.errorMessage = error.localizedDescription
+                    
+                    switch error {
+                    case .serverError(let code, let message):
+                        if code == 201, let message = message, message.contains("invalid email and password") {
+                            self.errorMessage = "Invalid email or password. Please check your credentials and try again."
+                        } else {
+                            self.errorMessage = "Server error (\(code)): \(message ?? "Unknown error")"
+                        }
+                    case .unauthorized:
+                        self.errorMessage = "Invalid email or password. Please check your credentials and try again."
+                    case .networkError(_):
+                        self.errorMessage = "Network connection issue. Please check your internet connection."
+                    case .timeout:
+                        self.errorMessage = "Connection timed out. Please try again later."
+                    default:
+                        self.errorMessage = "Login failed. Please try again."
+                    }
+                    
+                    self.showErrorAlert = true
                 }
             }
         }
     }
     
-    // Store user data in local storage after successful backend authentication
     private func storeGoogleUserDataLocally(response: GoogleLoginResponse) {
-        // Store tokens from backend response
         TokenManager.shared.storeTokens(
             accessToken: response.accessToken,
             refreshToken: response.refreshToken
         )
         
-        // Store additional user info
         UserDefaults.standard.set(response.contact.id, forKey: "user_id")
         UserDefaults.standard.set(response.email, forKey: "user_email")
         UserDefaults.standard.set(response.contact.fullName, forKey: "user_name")
@@ -337,35 +362,37 @@ struct SignInPage: View {
         UserDefaults.standard.synchronize()
     }
     
+    private func extractEmailFromErrorMessage(_ message: String) -> String {
+        if let range = message.range(of: "for email ") {
+            let emailPart = String(message[range.upperBound...])
+            let email = emailPart.trimmingCharacters(in: CharacterSet(charactersIn: ".,!?"))
+            return email
+        }
+        return "this email"
+    }
+    
     private func storeUserDataLocally(response: SignInResponse) {
-        // Create UserDetails object from backend response
         let userDetails = UserDetails(
             name: response.contact.fullName,
-            dateOfBirth: Date(), // Default value, can be updated later
-            timeOfBirth: Date(), // Default value, can be updated later
-            placeOfBirth: "" // Default value, can be updated later
+            dateOfBirth: Date(),
+            timeOfBirth: Date(),
+            placeOfBirth: ""
         )
         
-        // Save to local storage
         userDetails.saveToLocalStorage { success, error in
             if success {
                 print("✅ User details saved to local storage")
-                
-                // DO NOT mark user details as completed - force user to go through UserDetailsForm
-                // This ensures user always sees UserDetailsForm after signin
                 AuthenticationManager.hasCompletedUserDetails = false
             } else {
                 print("❌ Failed to save user details: \(error?.localizedDescription ?? "Unknown error")")
             }
         }
         
-        // Store authentication tokens using TokenManager
         TokenManager.shared.storeTokens(
             accessToken: response.accessToken,
             refreshToken: response.refreshToken
         )
         
-        // Store additional user info
         UserDefaults.standard.set(response.contact.id, forKey: "user_id")
         UserDefaults.standard.set(response.email, forKey: "user_email")
         UserDefaults.standard.set(response.contact.fullName, forKey: "user_name")
@@ -376,32 +403,30 @@ struct SignInPage: View {
     }
     
     private func handleGoogleSignIn() {
-        
+        // FIXED: Set processing flag to prevent auto-navigation
+        isProcessingGoogleSignIn = true
         isLoading = true
         errorMessage = nil
         
-        // Get the root view controller
         let rootViewController = UIApplication.getRootViewController()
         
-        // Use Firebase Google Sign-In
         authManager.signInWithGoogle(presenting: rootViewController) { success in
             if success {
-                // Get the Firebase ID token
                 self.authManager.user?.getIDToken { idToken, error in
                     if let idToken = idToken {
                         print("🔑 Got Firebase ID token, calling backend Google login...")
                         
-                        // Call backend Google login API
                         AuthService.shared.googleLogin(idToken: idToken) { result in
                             DispatchQueue.main.async {
+                                // FIXED: Always reset processing flag
+                                self.isProcessingGoogleSignIn = false
+                                
                                 switch result {
                                 case .success(let response):
                                     print("✅ Backend Google login successful")
                                     
-                                    // Store user data from backend response
                                     self.storeGoogleUserDataLocally(response: response)
                                     
-                                    // Create initial user details in local storage
                                     let initialUserDetails = UserDetails(
                                         name: response.contact.fullName,
                                         dateOfBirth: Date(),
@@ -409,13 +434,14 @@ struct SignInPage: View {
                                         placeOfBirth: ""
                                     )
                                     
-                                    // Save to UserDefaults
                                     initialUserDetails.saveToLocalStorage { success, error in
                                         if !success {
                                             print("Failed to save initial user details: \(error?.localizedDescription ?? "Unknown error")")
                                         }
                                     }
                                     
+                                    // FIXED: Only set auth state after successful backend validation
+                                    self.authManager.isAuthenticated = true
                                     self.isLoading = false
                                     self.showHomeView = true
                                     
@@ -423,11 +449,28 @@ struct SignInPage: View {
                                     print("❌ Backend Google login failed: \(error.localizedDescription)")
                                     self.isLoading = false
                                     
-                                    // Provide more specific error messages based on error type
+                                    // FIXED: Sign out from Firebase to prevent auth state conflicts
+                                    try? Auth.auth().signOut()
+                                    self.authManager.isAuthenticated = false
+                                    
+                                    // FIXED: Enhanced error messaging for signup guidance
                                     switch error {
                                     case .serverError(let code, let message):
                                         if code == 500, let message = message, message.contains("Google services file not found") {
                                             self.errorMessage = "Google login is not configured on the server. Please try email login instead."
+                                        } else if code == 500, let message = message, message.contains("no valid contact found") {
+                                            let email = self.extractEmailFromErrorMessage(message)
+                                            self.errorMessage = "No account found for \(email). Please create an account first by tapping 'Sign up' below."
+                                            
+                                            // Post notification to inform OnboardingView about this specific error
+                                            NotificationCenter.default.post(
+                                                name: Notification.Name("GoogleLoginNoValidContactError"),
+                                                object: nil,
+                                                userInfo: ["errorMessage": "No valid account found for \(email). Please create an account first."]
+                                            )
+                                            
+                                            // Navigate back to onboarding
+                                            NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
                                         } else {
                                             self.errorMessage = "Server error (\(code)): \(message ?? "Unknown error")"
                                         }
@@ -438,212 +481,39 @@ struct SignInPage: View {
                                     case .timeout:
                                         self.errorMessage = "Connection timed out. Please try again later."
                                     default:
-                                        self.errorMessage = "Failed to authenticate with backend. Please try again."  
+                                        self.errorMessage = "Failed to authenticate with backend. Please try again."
                                     }
+                                    
+                                    self.showErrorAlert = true
                                 }
                             }
                         }
                     } else {
                         DispatchQueue.main.async {
+                            // FIXED: Reset processing flag on token error
+                            self.isProcessingGoogleSignIn = false
                             print("❌ Failed to get Firebase ID token: \(error?.localizedDescription ?? "Unknown error")")
                             self.isLoading = false
+                            
+                            // FIXED: Sign out from Firebase
+                            try? Auth.auth().signOut()
+                            self.authManager.isAuthenticated = false
+                            
                             self.errorMessage = "Failed to get authentication token. Please try again."
+                            self.showErrorAlert = true
                         }
                     }
                 }
             } else {
                 DispatchQueue.main.async {
+                    // FIXED: Reset processing flag on Google Sign-In failure
+                    self.isProcessingGoogleSignIn = false
                     self.isLoading = false
+                    self.authManager.isAuthenticated = false
                     self.errorMessage = "Google Sign-In failed. Please try again."
+                    self.showErrorAlert = true
                 }
             }
         }
     }
 }
-
-// ForgotPasswordView matching the provided design
-struct ForgotPasswordView: View {
-    @State private var email: String = ""
-    @State private var message: String? = nil
-    @State private var isLoading = false
-    @Environment(\.presentationMode) var presentationMode
-    @ObservedObject private var authManager = AuthenticationManager.shared
-    
-    // Validation state
-    @State private var emailError: String? = nil
-    @State private var emailEdited = false
-    
-    var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color(hex: "#F9CBA6"), Color(hex: "#FFF4EB")]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Logo and brand
-               HStack {
-                       Image("headerimage")
-                       .resizable()
-                       .scaledToFit()
-                       .frame(width: 80, height: 80)
-                       .padding(.top, 30)
-                        
-                    }
-                    .padding(.top, 40)
-                
-                // Header text
-                Text("Forgot your password")
-                    .font(.system(size: 24, weight: .bold))
-                    .padding(.top, 20)
-                
-                // Description text
-                Text("Enter your email address and we will send you\na link to create a new password")
-                    .font(.system(size: 16))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                    .padding(.top, 5)
-                    .padding(.bottom, 20)
-                
-                // Email field label
-                HStack {
-                    Text("Email")
-                        .font(.headline)
-                        .foregroundColor(.black)
-                    Spacer()
-                }
-                .padding(.horizontal)
-                
-                // Email input field
-                TextField("", text: $email)
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(emailError != nil && emailEdited ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-                    .padding(.horizontal)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .accentColor(.black) // Make cursor visible
-                    .onChange(of: email) { oldValue, newValue in
-                        emailEdited = true
-                        validateEmail()
-                    }
-                    .onAppear {
-                        // Focus on this field when view appears
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), to: nil, from: nil, for: nil)
-                        }
-                    }
-                
-                if let error = emailError, emailEdited {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(.horizontal)
-                        .padding(.top, 4)
-                }
-                
-                // Send button
-                Button(action: {
-                    resetPassword()
-                }) {
-                    Text("Send")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(hex: "#4A2511"))
-                        )
-                }
-                .padding(.horizontal)
-                .disabled(!isEmailValid())
-                .opacity(isEmailValid() ? 1.0 : 0.5)
-                .padding(.top, 10)
-                
-                // Error/success message
-                if let message = message {
-                    Text(message)
-                        .foregroundColor(message.contains("sent") ? .green : .red)
-                        .padding()
-                }
-                
-                Spacer()
-                
-           
-                    Text("Back to Sign In")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                        .padding(.bottom, 30)
-                        .onTapGesture {
-                            presentationMode.wrappedValue.dismiss()
-                        }
-                
-            }
-            .padding()
-            
-            // Loading overlay
-            if isLoading {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
-            }
-        }
-        .navigationBarBackButtonHidden(true)
-        .navigationBarItems(leading: EmptyView())
-    }
-    
-    private func isEmailValid() -> Bool {
-        return emailError == nil && !email.isEmpty
-    }
-    
-    private func validateEmail() {
-        if email.isEmpty {
-            emailError = "Email is required"
-        } else if !isValidEmail(email) {
-            emailError = "Please enter a valid email"
-        } else {
-            emailError = nil
-        }
-    }
-    
-    private func isValidEmail(_ email: String) -> Bool {
-        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let emailPred = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
-        return emailPred.evaluate(with: email)
-    }
-    
-    private func resetPassword() {
-        guard isEmailValid() else { return }
-        
-        isLoading = true
-        message = nil
-        
-        // Use Firebase password reset
-        authManager.resetPassword(email: email) { error in
-            DispatchQueue.main.async {
-                self.isLoading = false
-                
-                if let error = error {
-                    self.message = "Error: \(error.localizedDescription)"
-                } else {
-                    self.message = "Password reset instructions sent to your email"
-                    
-                    // Navigate back to sign in page after a short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        self.presentationMode.wrappedValue.dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
- 

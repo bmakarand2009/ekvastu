@@ -43,7 +43,7 @@ struct HomeAnalyzeView: View {
     
     // Properties filtered by selected type
     private var propertiesForSelectedType: [PropertyData] {
-        return properties.filter { $0.type.lowercased() == selectedPropertyType.lowercased() }
+        return properties.filter { $0.propertyType.lowercased() == selectedPropertyType.lowercased() }
     }
     
     // Rooms filtered by selected property type

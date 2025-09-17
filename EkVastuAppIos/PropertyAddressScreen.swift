@@ -20,6 +20,7 @@ struct PropertyAddressScreen: View {
     @State private var showChangeAddressSheet = false
     @State private var showPropertyEvaluation = false
     @State private var isEditMode = false
+    @State private var showSuccess = false
     @State private var suggestedAddresses: [GMSAutocompletePrediction] = []
     @State private var showSuggestions = false
     @State private var placesClient = GMSPlacesClient.shared()
@@ -303,7 +304,7 @@ struct PropertyAddressScreen: View {
     private func fetchSuggestedAddresses(for query: String) {
         let token = GMSAutocompleteSessionToken.init()
         let filter = GMSAutocompleteFilter()
-        filter.type = .address
+        filter.types = ["address"]
         // Remove country restriction to enable worldwide address search
         
         placesClient.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: token) { predictions, error in
@@ -323,7 +324,9 @@ struct PropertyAddressScreen: View {
     private func selectAddress(_ prediction: GMSAutocompletePrediction) {
         let token = GMSAutocompleteSessionToken.init()
         
-        placesClient.fetchPlace(fromPlaceID: prediction.placeID, placeFields: .all, sessionToken: token) { place, error in
+        let fields: GMSPlaceField = [.name, .formattedAddress, .coordinate]
+        // Note: fetchPlace(fromPlaceID:placeFields:sessionToken:callback:) is deprecated; update when migrating SDK fully.
+        placesClient.fetchPlace(fromPlaceID: prediction.placeID, placeFields: fields, sessionToken: token) { place, error in
             if let error = error {
                 print("Error fetching place details: \(error.localizedDescription)")
                 return
@@ -426,46 +429,13 @@ struct PropertyAddressScreen: View {
         }
     }
     
-    private func checkForExistingPropertyType(completion: @escaping (Bool) -> Void) {
-        print("🔍 Checking for existing properties of type: \(propertyType.rawValue)")
-        
-        propertyService.getAllProperties { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    if response.success, let properties = response.data {
-                        // Map property type to API format for comparison
-                        let apiPropertyType = self.mapPropertyTypeToAPI(self.propertyType)
-                        
-                        // Check if any existing property has the same type
-                        let typeExists = properties.contains { property in
-                            property.type.lowercased() == apiPropertyType.lowercased()
-                        }
-                        
-                        print("🔍 Type '\(apiPropertyType)' exists: \(typeExists)")
-                        completion(typeExists)
-                    } else {
-                        // If we can't fetch properties, allow creation (fail-safe)
-                        print("⚠️ Could not fetch properties, allowing creation")
-                        completion(false)
-                    }
-                    
-                case .failure(let error):
-                    print("❌ Error checking existing properties: \(error.localizedDescription)")
-                    // If we can't fetch properties, allow creation (fail-safe)
-                    completion(false)
-                }
-            }
-        }
-    }
-    
     private func proceedWithPropertyCreation() {
         print("✅ Proceeding with property creation...")
         
         // Parse complete address to extract components
         let addressComponents = parseCompleteAddress(completeAddress)
         
-        // Map property type to API format
+        // Use propertyTypeForAPI to get the API-compatible property type
         let apiPropertyType = mapPropertyTypeToAPI(propertyType)
         
         propertyService.createProperty(
@@ -483,24 +453,54 @@ struct PropertyAddressScreen: View {
                 switch result {
                 case .success(let response):
                     if response.success {
-                        print("✅ Property created successfully via API")
-                        // Navigate back to the list screen
-                        self.navigateToAddressList = true
+                        // Property created successfully
+                        self.showSuccess = true
+                        
+                        // Dismiss after a short delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            self.presentationMode.wrappedValue.dismiss()
+                        }
                     } else {
+                        // Show error message from server
                         self.alertMessage = response.message ?? "Failed to create property"
                         self.showAlert = true
                     }
                     
                 case .failure(let error):
-                    print("❌ Failed to create property: \(error.localizedDescription)")
-                    self.alertMessage = "Failed to create property: \(error.localizedDescription)"
+                    // Show error message
+                    self.alertMessage = error.localizedDescription
                     self.showAlert = true
                 }
             }
         }
     }
     
-    // Helper function to get user-friendly property type name
+    private func checkForExistingPropertyType(completion: @escaping (Bool) -> Void) {
+        print("🔍 Checking for existing properties of type: \(propertyType.rawValue)")
+        
+        propertyService.getAllProperties { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    if let properties = response.data {
+                        // Check if any property has the same type
+                        let hasSameType = properties.contains { property in
+                            property.propertyType.lowercased() == self.mapPropertyTypeToAPI(self.propertyType).lowercased()
+                        }
+                        completion(!hasSameType)
+                    } else {
+                        completion(true)
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Error checking existing properties: \(error.localizedDescription)")
+                    // If we can't fetch properties, allow creation (fail-safe)
+                    completion(false)
+                }
+            }
+        }
+    }
+    
     private func getPropertyTypeName(_ type: PropertyAddress.PropertyType) -> String {
         switch type {
         case .home:
@@ -551,7 +551,7 @@ struct PropertyAddressScreen: View {
         // Parse complete address to extract components
         let addressComponents = parseCompleteAddress(completeAddress)
         
-        // Map property type to API format
+        // Use propertyTypeForAPI to get the API-compatible property type
         let apiPropertyType = mapPropertyTypeToAPI(propertyType)
         
         propertyService.updateProperty(

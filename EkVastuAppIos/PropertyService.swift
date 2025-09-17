@@ -87,7 +87,7 @@ class PropertyService: ObservableObject {
         
         let request = CreatePropertyRequest(
             name: name,
-            type: type,
+            propertyType: type,
             street: street,
             city: city,
             state: state,
@@ -196,7 +196,7 @@ class PropertyService: ObservableObject {
         
         let request = UpdatePropertyRequest(
             name: name,
-            type: type,
+            propertyType: type,
             street: street,
             city: city,
             state: state,

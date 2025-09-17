@@ -46,6 +46,16 @@ struct PropertyAddress: Codable, Identifiable {
         fetchFromLocalStorage(completion: completion)
     }
     
+    // Convert PropertyType to API-compatible string
+    var propertyTypeForAPI: String {
+        switch self.propertyType {
+        case .home: return "residential"
+        case .work: return "work"
+        case .office: return "office"
+        case .other: return "other"
+        }
+    }
+    
     // Geocode address to get coordinates
     func geocodeAddress(completion: @escaping (CLLocationCoordinate2D?, Error?) -> Void) {
         let geocoder = CLGeocoder()

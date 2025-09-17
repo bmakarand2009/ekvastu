@@ -388,14 +388,16 @@ struct PropertyAddressListScreen: View {
     
     // Helper function to convert PropertyData to PropertyAddress
     private func convertPropertyDataToAddress(_ property: PropertyData) -> PropertyAddress? {
-        // Map property type to PropertyAddress.PropertyType
+        // Map property type from API to PropertyAddress.PropertyType
         let propertyType: PropertyAddress.PropertyType
-        switch property.type.lowercased() {
-        case "home", "residential":
+        
+        // Use the same mapping as in PropertyAddress.propertyTypeForAPI
+        switch property.propertyType.lowercased() {
+        case "residential", "home":
             propertyType = .home
         case "work":
             propertyType = .work
-        case "office", "commercial":
+        case "commercial", "office":
             propertyType = .office
         default:
             propertyType = .other

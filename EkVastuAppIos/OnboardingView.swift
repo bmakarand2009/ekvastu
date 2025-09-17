@@ -4,16 +4,27 @@ struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var isOnboardingComplete = false
     @State private var showSignIn = false
+    @State private var showErrorMessage = false
+    @State private var errorMessage: String = ""
     
     // Initialize notification observer
     init() {
         setupNotificationObserver()
     }
     
-    // Set up notification observer to handle back navigation
+    // Set up notification observer to handle back navigation and error messages
     private func setupNotificationObserver() {
         NotificationCenter.default.addObserver(forName: Notification.Name("ReturnToOnboarding"), object: nil, queue: .main) { _ in
             showSignIn = false
+        }
+        
+        // Add observer for Google login error
+        NotificationCenter.default.addObserver(forName: Notification.Name("GoogleLoginNoValidContactError"), object: nil, queue: .main) { notification in
+            if let message = notification.userInfo?["errorMessage"] as? String {
+                self.errorMessage = message
+                self.showErrorMessage = true
+                self.showSignIn = false
+            }
         }
     }
     
@@ -36,6 +47,36 @@ struct OnboardingView: View {
                 Color.white.ignoresSafeArea()
                 
                 VStack {
+                    // Error message banner
+                    if showErrorMessage {
+                        VStack {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                                    .padding(.leading, 15)
+                                
+                                Text(errorMessage)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.red)
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 5)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    showErrorMessage = false
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .foregroundColor(.gray)
+                                        .padding(.trailing, 15)
+                                }
+                            }
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                        }
+                    }
                     TabView(selection: $currentPage) {
                         // First slide
                         OnboardingSlide(

@@ -99,7 +99,7 @@ class AuthService: ObservableObject {
             return
         }
         
-        networkService.post<SignInResponse>(
+        networkService.post(
             endpoint: .signin,
             body: requestData,
             headers: nil
@@ -305,7 +305,7 @@ class AuthService: ObservableObject {
                             
                             #if DEBUG
                             // In development mode, create a mock successful response using the Firebase user's email
-                            if let emailFromRequest = try? JSONDecoder().decode(GoogleLoginRequest.self, from: requestData).idToken.components(separatedBy: ".").count > 1,
+                            if let _ = try? JSONDecoder().decode(GoogleLoginRequest.self, from: requestData).idToken.components(separatedBy: ".").count > 1,
                                let payload = try? JSONDecoder().decode(GoogleLoginRequest.self, from: requestData).idToken.components(separatedBy: ".")[1],
                                let data = Data(base64Encoded: payload.padding(toLength: ((payload.count + 3) / 4) * 4, withPad: "=", startingAt: 0)),
                                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -327,15 +327,22 @@ class AuthService: ObservableObject {
                         do {
                             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                                let errors = json["errors"] as? [String: Any],
-                               let messageJson = errors["message"] as? String,
-                               let messageData = messageJson.data(using: .utf8),
-                               let innerJson = try JSONSerialization.jsonObject(with: messageData) as? [String: Any],
-                               let innerErrors = innerJson["errors"] as? [String: Any],
-                               let errorMessage = innerErrors["message"] as? String {
+                               let messageJson = errors["message"] as? String {
                                 
-                                self?.errorMessage = "Server error: \(errorMessage)"
-                                completion(.failure(.serverError(httpResponse.statusCode, errorMessage)))
-                                return
+                                // Try to parse the inner JSON message
+                                if let messageData = messageJson.data(using: .utf8),
+                                   let innerJson = try JSONSerialization.jsonObject(with: messageData) as? [String: Any],
+                                   let errorMessage = innerJson["message"] as? String {
+                                    
+                                    self?.errorMessage = errorMessage
+                                    completion(.failure(.serverError(httpResponse.statusCode, errorMessage)))
+                                    return
+                                } else {
+                                    // If inner JSON parsing fails, use the messageJson directly
+                                    self?.errorMessage = messageJson
+                                    completion(.failure(.serverError(httpResponse.statusCode, messageJson)))
+                                    return
+                                }
                             }
                         } catch {
                             // If JSON parsing fails, use the raw response
@@ -548,7 +555,7 @@ class AuthService: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        networkService.get<TenantPingResponse>(
+        networkService.get(
             endpoint: .tenantPing,
             headers: nil
         )
@@ -697,7 +704,7 @@ class AuthService: ObservableObject {
             return
         }
         
-        networkService.post<SignUpResponse>(
+        networkService.post(
             endpoint: .signup,
             body: requestData,
             headers: nil

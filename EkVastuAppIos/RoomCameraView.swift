@@ -664,8 +664,8 @@ struct RoomCameraView: View {
                                         return
                                     }
                                     
-                                    // If we've reached remaining slots, go to evaluation
-                                    if self.capturedPhotos.count >= (self.maxPhotos - self.actualExistingPhotosCount) {
+                                    // If we've reached the maximum total photos, go to evaluation
+                                    if self.savedPhotosCount >= self.maxPhotos {
                                         self.navigateToEvaluation()
                                     }
                                 }
@@ -686,8 +686,8 @@ struct RoomCameraView: View {
                 }
             }
             
-            // Return to camera view if not at remaining slots
-            if self.capturedPhotos.count < (self.maxPhotos - self.actualExistingPhotosCount) {
+            // Return to camera view if not at maximum total photos
+            if self.savedPhotosCount < self.maxPhotos {
                 // First stop the current camera session
                 self.cameraService.stopSession()
                 self.compassService.stopUpdates()

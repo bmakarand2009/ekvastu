@@ -133,7 +133,7 @@ class EntrancePhotoManager: ObservableObject {
     private func deleteFromCloudinary(assetId: String) {
         Task { @MainActor in
             do {
-                let response = try await cloudinaryService.deleteImage(assetId: assetId)
+                _ = try await cloudinaryService.deleteImage(assetId: assetId)
                 print("Successfully deleted image from Cloudinary: \(assetId)")
             } catch {
                 print("Error deleting from Cloudinary: \(error.localizedDescription)")
