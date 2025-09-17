@@ -460,17 +460,7 @@ struct SignInPage: View {
                                             self.errorMessage = "Google login is not configured on the server. Please try email login instead."
                                         } else if code == 500, let message = message, message.contains("no valid contact found") {
                                             let email = self.extractEmailFromErrorMessage(message)
-                                            self.errorMessage = "No account found for \(email). Please create an account first by tapping 'Sign up' below."
-                                            
-                                            // Post notification to inform OnboardingView about this specific error
-                                            NotificationCenter.default.post(
-                                                name: Notification.Name("GoogleLoginNoValidContactError"),
-                                                object: nil,
-                                                userInfo: ["errorMessage": "No valid account found for \(email). Please create an account first."]
-                                            )
-                                            
-                                            // Navigate back to onboarding
-                                            NotificationCenter.default.post(name: Notification.Name("ReturnToOnboarding"), object: nil)
+                                            self.errorMessage = "no valid contact found for email \(email), signup for an account"
                                         } else {
                                             self.errorMessage = "Server error (\(code)): \(message ?? "Unknown error")"
                                         }
